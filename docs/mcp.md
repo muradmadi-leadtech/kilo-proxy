@@ -5,19 +5,22 @@ status: planning
 owner: sergio-durban
 author: murad-madi
 date: 2026-10-22
-revision: 2 (control plane — supersedes the hub-and-spokes draft)
+revision: 2.1 (control plane — supersedes the hub-and-spokes draft)
 tags: [kilo-proxy, mcp, proposal]
 ---
 # Kilo Proxy — MCP setup
 
 > Design proposal for a new **MCP** tab in Kilo Proxy: curated catalog, per-user auth, and
 > one-click config fan-out to every harness. Repo: `/Users/murad.madi/Projects/kilo-proxy`
-> (v0.56.2, Go 1.26). Staging copy — belongs in the repo as `docs/mcp.md`.
+> (in-repo copy; against v0.67.6, Go 1.26).
 >
 > **Rev 2 change.** Rev 1 proposed a hub: Kilo Proxy runs an aggregating MCP server and every
 > harness points at it. That was over-engineered. Kilo Proxy is now a **control plane, not a
 > data plane** — it configures harnesses and hands out credentials, then gets out of the way.
 > Every harness calls each upstream MCP directly. See §2 for what that removes.
+>
+> **Rev 2.1 (in-repo).** Corrected stale facts (version, nav label) and closed the §9
+> mode-support question against installed harnesses. No design decisions changed.
 
 ## 1. Goal
 
@@ -26,7 +29,7 @@ servers they want, authenticates each **once**, then syncs every harness config 
 
 | Beat | Behaviour |
 |---|---|
-| Tab | New `MCP` nav entry beside Agents / Models / Activity / Settings |
+| Tab | New `MCP` nav entry beside Apps / Models / Activity / Settings |
 | Browse | Search bar over the curated catalog, cards with state + auth badges |
 | Toggle | Per-MCP on/off |
 | Authenticate | Per-user OAuth (or token / none), held in the credential vault |
@@ -215,14 +218,20 @@ Claude Code is the notable gap, and the one that required hand-editing in practi
 `.claude.json` is large and holds unrelated user state, so it needs read-modify-write with full
 key preservation — or project-scoped `.mcp.json` (safer, but per-project).
 
-**Mode support per harness.** Modes A and B are not uniformly available; this needs confirming
-per harness and is a P0 deliverable:
+**Mode support per harness.** Modes A and B are not uniformly available. Confirmed against
+installed harnesses on 2026-10-22 (`claude` 2.1.306, `codex-cli` 0.163.0, Zed 1.24.4):
 
-| Harness | Mode A | Mode B |
-|---|---|---|
-| Codex / Codex CLI | ✅ | ✅ `bearer_token_env_var`, `env_http_headers` |
-| Claude Code | ✅ | ⚠️ env-injected via `settings.json` `env` block — confirm on launch |
-| Oh My Pi · OpenCode · Zed · T3 | ✅ | ⚠️ confirm |
+| Harness | Mode A | Mode B | Evidence |
+|---|---|---|---|
+| Codex / Codex CLI | ✅ | ✅ **confirmed** | `bearer_token`, `bearer_token_env_var`, `http_headers`, `env_http_headers`, `http_headers_helper`; `codex_images.go:77` already writes `bearer_token_env_var`. |
+| Claude Code | ✅ | ✅ **confirmed** | `mcpServers` entries expand `${VAR}` / `${VAR:-default}` from the process env; a var supplied only at launch reached the server. Kilo launches it, so launch injection is sufficient. |
+| Oh My Pi · OpenCode · Zed · T3 · Synara · OpenMausBot | ✅ (via each writer) | ⚠️ **unverified** — not installed on the test host |
+
+**Mode-B naming constraint (Claude Code).** Claude Code reads certain env vars as empty when a
+remote MCP server references them — measured: `MCP_CLIENT_SECRET`, `MCP_XAA_IDP_CLIENT_SECRET`,
+`ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN` are blanked; `SUPERMETRICS_API_KEY`,
+`KILO_MCP_*_TOKEN`, `API_KEY` expand normally. Kilo therefore names injected variables
+`KILO_MCP_<UPSTREAM>_TOKEN`.
 
 ## 10. Phasing
 
