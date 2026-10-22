@@ -10,16 +10,18 @@ function fixture(t, api) {
  const element = () => ({children:[],textContent:'',value:'',checked:false,disabled:false,hidden:false,placeholder:'',className:'',type:'',href:'',classList:{toggle(){}},replaceChildren(){this.children=[];},append(...items){this.children.push(...items);},addEventListener(){}});
  globalThis.document = {getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element};
  t.after(()=>{globalThis.document = previous;});
- const helper = createMCPHelper({api:(path, body, method) => {calls.push({path, body, method}); return api(path, body, method);}, onChange(){}});
+ const scheduled = [];
+ const helper = createMCPHelper({api:(path, body, method) => {calls.push({path, body, method}); return api(path, body, method);}, onChange(){}, schedule:(run, ms)=>{scheduled.push({run, ms});}});
  helper.render({state:{}, language:'en'});
- return {helper, nodes, calls};
+ return {helper, nodes, calls, scheduled};
 }
 
-test('mcpServerStatus covers ready, needs-token, oauth-pending and off', () => {
+test('mcpServerStatus covers ready, needs-token, needs-signin and off', () => {
  assert.deepEqual(mcpServerStatus(server({enabled:true, hasToken:true})), {ready:true, key:'ready'});
  assert.deepEqual(mcpServerStatus(server({enabled:true, auth:'none', hasToken:false})), {ready:true, key:'ready'});
  assert.deepEqual(mcpServerStatus(server({enabled:true, hasToken:false})), {ready:false, key:'needs-token'});
- assert.deepEqual(mcpServerStatus(server({enabled:true, auth:'oauth', hasToken:false})), {ready:false, key:'oauth-pending'});
+ assert.deepEqual(mcpServerStatus(server({enabled:true, auth:'oauth', connected:false})), {ready:false, key:'needs-signin'});
+ assert.deepEqual(mcpServerStatus(server({enabled:true, auth:'oauth', connected:true})), {ready:true, key:'ready'});
  assert.deepEqual(mcpServerStatus(server({enabled:false, hasToken:true})), {ready:false, key:'off'});
  assert.deepEqual(mcpServerStatus(server({enabled:false, auth:'oauth'})), {ready:false, key:'off'});
  assert.deepEqual(mcpServerStatus(undefined), {ready:false, key:'off'});
@@ -30,8 +32,8 @@ test('mcpAuthLabel and mcpModeLabel are bilingual with English as default', () =
  assert.equal(mcpAuthLabel('token', 'es'), 'Token');
  assert.equal(mcpAuthLabel('none'), 'No credential');
  assert.equal(mcpAuthLabel('none', 'es'), 'Sin credencial');
- assert.equal(mcpAuthLabel('oauth', 'en'), 'OAuth (coming soon)');
- assert.equal(mcpAuthLabel('oauth', 'es'), 'OAuth (próximamente)');
+ assert.equal(mcpAuthLabel('oauth', 'en'), 'OAuth');
+ assert.equal(mcpAuthLabel('oauth', 'es'), 'OAuth');
  assert.equal(mcpAuthLabel('unknown', 'es'), '');
  assert.equal(mcpModeLabel('A', 'en'), 'Literal value in config');
  assert.equal(mcpModeLabel('A', 'es'), 'Valor literal en la configuración');
@@ -128,4 +130,62 @@ test('a saved token is never stored in state or written into status text', async
  assert.equal(nodes.get('mcp-status').textContent.includes(token), false);
  for (const node of nodes.values()) assert.equal(node.textContent.includes(token), false);
  assert.equal(nodes.get('mcp-list').children.length, 2);
+});
+
+test('oauthStart posts mcp/oauth/start, exposes the sign-in URL and schedules one poll', async t => {
+ const {helper, calls, scheduled} = fixture(t, async path => {
+  if (path === 'mcp/catalog') return catalog();
+  if (path === 'mcp/oauth/status') return {flow:{server:'amplitude', status:'pending'}};
+  return {status:'pending', authorizationUrl:'https://as.example/authorize?state=abc'};
+ });
+ await helper.reload();
+ assert.equal(await helper.oauthStart('amplitude'), true);
+ const started = calls.find(call => call.path === 'mcp/oauth/start');
+ assert.deepEqual(started.body, {id:'amplitude'});
+ assert.equal(helper.state().oauth.url, 'https://as.example/authorize?state=abc');
+ assert.equal(helper.state().oauth.server, 'amplitude');
+ assert.equal(scheduled.length, 1);
+ assert.equal(scheduled[0].ms, 1200);
+});
+
+test('oauthCancel clears the flow and posts mcp/oauth/cancel', async t => {
+ const {helper, calls} = fixture(t, async path => path === 'mcp/catalog' ? catalog() : {ok:true});
+ await helper.reload();
+ await helper.oauthStart('amplitude');
+ await helper.oauthCancel();
+ const cancelled = calls.find(call => call.path === 'mcp/oauth/cancel');
+ assert.deepEqual(cancelled.body, {});
+ assert.equal(helper.state().oauth.server, '');
+});
+
+test('pollOAuth keeps polling while the flow runs and settles when it connects', async t => {
+ const running = fixture(t, async path => {
+  if (path === 'mcp/catalog') return catalog();
+  if (path === 'mcp/oauth/start') return {status:'pending', authorizationUrl:'https://as.example/a'};
+  if (path === 'mcp/oauth/status') return {flow:{server:'amplitude', status:'pending'}};
+  return {ok:true};
+ });
+ await running.helper.reload();
+ await running.helper.oauthStart('amplitude');
+ await running.helper.pollOAuth();
+ assert.equal(running.helper.state().oauth.server, 'amplitude');
+ assert.ok(running.scheduled.length >= 2, 'a running flow must schedule the next poll');
+
+ const settled = fixture(t, async path => {
+  if (path === 'mcp/catalog') return catalog();
+  if (path === 'mcp/oauth/start') return {status:'pending', authorizationUrl:'https://as.example/a'};
+  if (path === 'mcp/oauth/status') return {flow:{server:'amplitude', status:'connected'}};
+  return {ok:true};
+ });
+ await settled.helper.reload();
+ await settled.helper.oauthStart('amplitude');
+ await settled.helper.pollOAuth();
+ assert.equal(settled.helper.state().oauth.server, '');
+});
+
+test('a failed sign-in start reports the error and keeps something actionable', async t => {
+ const {helper} = fixture(t, async path => { if (path === 'mcp/catalog') return catalog(); throw new Error('An MCP sign-in is already in progress.'); });
+ await helper.reload();
+ assert.equal(await helper.oauthStart('amplitude'), false);
+ assert.match(helper.state().error, /already in progress/);
 });

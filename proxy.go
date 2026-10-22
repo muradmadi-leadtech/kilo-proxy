@@ -113,6 +113,7 @@ type app struct {
 	recommendedModelsCache    recommendedModelsCache
 	mcpCatalogURL             string // Test override; never accepted from clients or settings.
 	mcpCatalogCache           mcpCatalogCache
+	mcpOAuthFlow              *mcpOAuthSession
 	accountURL                string
 	authPollInterval          time.Duration
 	login                     *loginSession

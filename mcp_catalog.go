@@ -66,6 +66,12 @@ type curatedMCP struct {
 	DocsURL     string   `json:"docsUrl,omitempty"`
 	TokenURL    string   `json:"tokenUrl,omitempty"`
 	Scopes      []string `json:"scopes,omitempty"`
+
+	// OAuth overrides for servers that do not publish metadata, and the hosted
+	// client-metadata document URL when the server prefers CIMD over DCR.
+	AuthorizationURL  string `json:"authorizationUrl,omitempty"`
+	RegistrationURL   string `json:"registrationUrl,omitempty"`
+	ClientMetadataURL string `json:"clientMetadataUrl,omitempty"`
 }
 
 type curatedMCPCatalog struct {
@@ -142,6 +148,28 @@ func parseMCPCatalog(data []byte) ([]curatedMCP, error) {
 			if !validMCPText(scope, mcpScopeMax) {
 				return nil, fmt.Errorf("invalid scope for %q", s.ID)
 			}
+		}
+		for _, link := range []string{s.AuthorizationURL, s.RegistrationURL, s.ClientMetadataURL} {
+			if link != "" && !validMCPLink(link) {
+				return nil, fmt.Errorf("invalid OAuth override for %q", s.ID)
+			}
+		}
+		if s.Auth == "oauth" {
+			// An OAuth access token expires, so it is only ever injected at launch.
+			if s.Header == "" || s.ValuePrefix == "" || s.EnvVar == "" {
+				return nil, fmt.Errorf("MCP %q needs a header, value prefix and launch variable for OAuth", s.ID)
+			}
+			if len(s.Modes) != 1 || s.Modes[0] != "B" {
+				return nil, fmt.Errorf("MCP %q must declare mode B only for OAuth", s.ID)
+			}
+			if !mcpEnvVarPattern.MatchString(s.EnvVar) {
+				return nil, fmt.Errorf("invalid env var for %q", s.ID)
+			}
+			if envs[s.EnvVar] {
+				return nil, fmt.Errorf("duplicate env var for %q", s.ID)
+			}
+			envs[s.EnvVar] = true
+			continue
 		}
 		if s.Auth != "token" {
 			if s.Header != "" || s.ValuePrefix != "" || s.EnvVar != "" || len(s.Modes) > 0 {

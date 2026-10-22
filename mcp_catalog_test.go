@@ -47,8 +47,10 @@ func TestParseMCPCatalogAcceptsBase(t *testing.T) {
 	if _, err := parseMCPCatalog(catalogJSON(t, baseCatalogServer())); err != nil {
 		t.Fatalf("base server must parse: %v", err)
 	}
+	// OAuth is mode B only: the config names a launch variable, never the token.
 	oauth := baseCatalogServer()
-	oauth.ID, oauth.Auth, oauth.Header, oauth.ValuePrefix, oauth.EnvVar, oauth.Modes = "beta", "oauth", "", "", "", nil
+	oauth.ID, oauth.Auth, oauth.Modes = "beta", "oauth", []string{"B"}
+	oauth.Header, oauth.ValuePrefix, oauth.EnvVar = "Authorization", "Bearer ", "KILO_MCP_BETA_TOKEN"
 	if _, err := parseMCPCatalog(catalogJSON(t, oauth)); err != nil {
 		t.Fatalf("oauth server must parse: %v", err)
 	}
@@ -87,9 +89,24 @@ func TestParseMCPCatalogRejects(t *testing.T) {
 			s.Header = ""
 			return catalogJSON(t, s)
 		},
-		"oauth carrying header": func() []byte {
+		"oauth without a launch variable": func() []byte {
 			s := baseCatalogServer()
-			s.Auth, s.EnvVar, s.Modes = "oauth", "", nil
+			s.Auth, s.EnvVar, s.Modes = "oauth", "", []string{"B"}
+			return catalogJSON(t, s)
+		},
+		"oauth with mode A": func() []byte {
+			s := baseCatalogServer()
+			s.Auth, s.Modes = "oauth", []string{"A", "B"}
+			return catalogJSON(t, s)
+		},
+		"oauth without a header": func() []byte {
+			s := baseCatalogServer()
+			s.Auth, s.Header, s.Modes = "oauth", "", []string{"B"}
+			return catalogJSON(t, s)
+		},
+		"invalid oauth override": func() []byte {
+			s := baseCatalogServer()
+			s.Auth, s.Modes, s.TokenURL = "oauth", []string{"B"}, "http://insecure.example/token"
 			return catalogJSON(t, s)
 		},
 		"empty name": func() []byte {

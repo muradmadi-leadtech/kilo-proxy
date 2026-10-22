@@ -86,8 +86,11 @@ func (a *app) mcpServerConfigs(catalog []curatedMCP, state mcpStateFile, harness
 				problems = append(problems, s.ID+": no saved token")
 				continue
 			}
+		case "oauth":
+			// Mode B only: the config names the variable, never the token.
+			cfg.Enabled, cfg.EnvVar = true, s.EnvVar
 		default:
-			problems = append(problems, s.ID+": OAuth is not available yet")
+			problems = append(problems, s.ID+": unsupported credential kind")
 			continue
 		}
 		configs = append(configs, cfg)
@@ -181,15 +184,33 @@ func (a *app) syncMCP(ctx context.Context) ([]mcpSyncReport, error) {
 // so the value must match the reference the writers emit: the bare token.
 // Caller holds a.mu.
 func (a *app) mcpLaunchEnv() map[string]string {
+	return a.mcpLaunchEnvFor(context.Background(), builtinMCPCatalog())
+}
+
+// mcpLaunchEnvFor is the test seam: the catalog is a parameter so a test never
+// depends on the shipped list.
+func (a *app) mcpLaunchEnvFor(ctx context.Context, catalog []curatedMCP) map[string]string {
 	state := newMCPStateStore(a.dir).value
 	env := map[string]string{}
-	for _, s := range builtinMCPCatalog() {
+	for _, s := range catalog {
 		st := state.Servers[s.ID]
-		if !st.Enabled || s.Auth != "token" || st.Mode != "B" || s.EnvVar == "" {
+		if !st.Enabled || s.EnvVar == "" {
 			continue
 		}
-		if token, err := a.vault.Get(mcpVaultSlot(s.ID)); err == nil && token != "" {
-			env[s.EnvVar] = token
+		switch s.Auth {
+		case "token":
+			if st.Mode != "B" {
+				continue
+			}
+			if token, err := a.vault.Get(mcpVaultSlot(s.ID)); err == nil && token != "" {
+				env[s.EnvVar] = token
+			}
+		case "oauth":
+			// Refresh before launch so the injected value is never stale. A
+			// failure here only skips this server; it never blocks the launch.
+			if token, err := a.mcpOAuthAccessToken(ctx, s.ID); err == nil && token != "" {
+				env[s.EnvVar] = token
+			}
 		}
 	}
 	return env

@@ -28,6 +28,18 @@ func nativeMessage(message, language string) string {
 	if translated, ok := nativeBackendMessages[message]; ok {
 		return translated
 	}
+	const loginPrefix = "No se pudo preparar el inicio de sesión: "
+	if strings.HasPrefix(message, loginPrefix) {
+		return "Cannot prepare the sign-in: " + strings.TrimPrefix(message, loginPrefix)
+	}
+	const registerPrefix = "No se pudo registrar este equipo: "
+	if strings.HasPrefix(message, registerPrefix) {
+		return "Cannot register this computer: " + strings.TrimPrefix(message, registerPrefix)
+	}
+	const completePrefix = "No se pudo completar el inicio de sesión: "
+	if strings.HasPrefix(message, completePrefix) {
+		return "Cannot complete the sign-in: " + strings.TrimPrefix(message, completePrefix)
+	}
 	const tokenPrefix = "El servidor no aceptó el token: "
 	if strings.HasPrefix(message, tokenPrefix) {
 		return "The server did not accept the token: " + strings.TrimPrefix(message, tokenPrefix)
@@ -41,10 +53,38 @@ func nativeMessage(message, language string) string {
 
 // Canonical backend translations shared with ui/i18n.mjs.
 var nativeBackendMessages = map[string]string{
-	"Método no permitido.":         "Method not allowed.",
-	"Endpoint MCP desconocido.":    "Unknown MCP endpoint.",
-	"Servidor MCP desconocido.":    "Unknown MCP server.",
-	"Modo de entrega desconocido.": "Unknown delivery mode.",
+	"Servidor OAuth desconocido.": "Unknown OAuth server.",
+	"Este servidor no tiene variable de arranque; no se puede entregar un token OAuth.":                                   "This server has no launch variable, so an OAuth token cannot be delivered.",
+	"No se pueden eliminar las credenciales guardadas.":                                                                   "Cannot remove the stored credentials.",
+	"La aplicación se está cerrando.":                                                                                     "The application is closing.",
+	"Ya hay un inicio de sesión MCP en curso. Cancélalo antes de empezar otro.":                                           "An MCP sign-in is already in progress. Cancel it before starting another.",
+	"No se pudo abrir el puerto local para completar el inicio de sesión.":                                                "Cannot open the local port to complete the sign-in.",
+	"No se pudo preparar la solicitud segura de inicio de sesión.":                                                        "Cannot prepare the secure sign-in request.",
+	"El servidor publicó una dirección de autorización no válida.":                                                        "The server published an invalid authorization address.",
+	"El inicio de sesión no se completó o la respuesta no era válida.":                                                    "The sign-in was not completed or the response was invalid.",
+	"No se pudieron guardar las credenciales del inicio de sesión.":                                                       "Cannot save the sign-in credentials.",
+	"No se pueden guardar las credenciales en el almacén local.":                                                          "Cannot save the credentials in the local vault.",
+	"dirección de servidor no válida":                                                                                     "invalid server URL",
+	"el servidor no publica metadatos OAuth":                                                                              "the server does not publish OAuth metadata",
+	"el servidor anunció un servidor de autorización no utilizable":                                                       "the server advertised an unusable authorization server",
+	"el servidor de autorización publicó endpoints no utilizables":                                                        "the authorization server published unusable endpoints",
+	"el servidor de autorización no admite PKCE S256":                                                                     "the authorization server does not support PKCE S256",
+	"el servidor de autorización no está disponible":                                                                      "the authorization server is unavailable",
+	"el servidor de autorización no admite registro de cliente":                                                           "the authorization server does not support client registration",
+	"la respuesta de registro no fue utilizable":                                                                          "the registration response was unusable",
+	"el servidor de autorización no devolvió un identificador de cliente":                                                 "the authorization server returned no client identifier",
+	"el servidor de autorización devolvió un secreto de cliente no utilizable":                                            "the authorization server returned an unusable client secret",
+	"la respuesta del token no fue utilizable":                                                                            "the token response was unusable",
+	"el endpoint de token no devolvió un token de acceso":                                                                 "the token endpoint returned no access token",
+	"el endpoint de token devolvió credenciales no utilizables":                                                           "the token endpoint returned unusable credentials",
+	"respuesta demasiado grande":                                                                                          "oversized response",
+	"no hay inicio de sesión guardado para este servidor":                                                                 "no saved sign-in for this server",
+	"el inicio de sesión guardado caducó; vuelve a iniciarlo":                                                             "the saved sign-in expired; sign in again",
+	"no se puede guardar el inicio de sesión renovado":                                                                    "cannot save the refreshed sign-in",
+	"Método no permitido.":                                                                                                "Method not allowed.",
+	"Endpoint MCP desconocido.":                                                                                           "Unknown MCP endpoint.",
+	"Servidor MCP desconocido.":                                                                                           "Unknown MCP server.",
+	"Modo de entrega desconocido.":                                                                                        "Unknown delivery mode.",
 	"Este servidor no tiene variable de arranque; usa entrega literal.":                                                   "This server has no launch variable; use literal delivery.",
 	"Servidor de token desconocido.":                                                                                      "Unknown token server.",
 	"Introduce un token válido.":                                                                                          "Enter a valid token.",
@@ -512,7 +552,6 @@ var nativeBackendMessages = map[string]string{
 	"Kilo devolvió HTTP {status}. Revisa la clave y la organización.":                                                      "Kilo returned HTTP {status}. Check your key and organization.",
 	"Gateway accesible. El catálogo no verifica el saldo ni los permisos de generación de tu organización.":                "Gateway reachable. The catalog does not verify your organization's credits or generation permissions.",
 	"Kilo devolvió una respuesta de login no válida.":                                                                      "Kilo returned an invalid sign-in response.",
-	"La aplicación se está cerrando.":                                                                                      "The application is closing.",
 	"Detén el proxy o cancela el login actual antes de conectar otra cuenta.":                                              "Stop the proxy or cancel the current sign-in before connecting another account.",
 	"No se pudo iniciar el login de Kilo. Puedes usar tu API key manualmente.":                                             "Could not start Kilo sign-in. You can enter your API key manually.",
 	"Hay demasiados logins pendientes en Kilo. Espera un momento y vuelve a intentarlo.":                                   "Too many Kilo sign-ins are pending. Wait a moment and try again.",

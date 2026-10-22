@@ -734,6 +734,7 @@ func (u *nativeUI) acceptState(raw json.RawMessage) {
 	u.acceptImageDependencyState(state)
 	u.state = state
 	u.authenticated = true
+	u.mcpAcceptState()
 	if u.chatGPTLoginRequested {
 		account := nativeMap(state["chatgpt"])
 		if nativeString(account, "status") == "pending" && nativeString(account, "verificationUrl") == nativeChatGPTVerificationURL {

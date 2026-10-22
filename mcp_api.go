@@ -39,6 +39,24 @@ func (a *app) mcpAPI(w http.ResponseWriter, r *http.Request) {
 		default:
 			jsonError(w, 405, "Método no permitido.")
 		}
+	case "oauth/start":
+		if r.Method != http.MethodPost {
+			jsonError(w, 405, "Método no permitido.")
+			return
+		}
+		a.mcpOAuthStart(w, r)
+	case "oauth/status":
+		if r.Method != http.MethodGet {
+			jsonError(w, 405, "Método no permitido.")
+			return
+		}
+		a.mcpOAuthStatus(w)
+	case "oauth/cancel":
+		if r.Method != http.MethodPost {
+			jsonError(w, 405, "Método no permitido.")
+			return
+		}
+		a.mcpOAuthCancel(w)
 	case "sync":
 		if r.Method != http.MethodPost {
 			jsonError(w, 405, "Método no permitido.")
@@ -61,7 +79,8 @@ func (a *app) mcpCatalogView(w http.ResponseWriter, r *http.Request) {
 			"auth": s.Auth, "modes": s.Modes, "envVar": s.EnvVar,
 			"docsUrl": s.DocsURL, "tokenUrl": s.TokenURL, "scopes": s.Scopes,
 			"enabled": state.Enabled, "mode": state.Mode, "harnesses": state.Harnesses,
-			"hasToken": s.Auth == "token" && a.mcpHasToken(s.ID),
+			"hasToken":  s.Auth == "token" && a.mcpHasToken(s.ID),
+			"connected": s.Auth == "oauth" && a.mcpOAuthConnected(s.ID),
 		})
 	}
 	jsonResponse(w, 200, map[string]any{"servers": servers, "harnesses": mcpHarnesses, "warning": store.warning})
@@ -154,6 +173,11 @@ func (a *app) mcpClearToken(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, 500, "No se puede eliminar el token guardado.")
 		return
 	}
+	// A sign-in and a pasted token are separate slots; clear both.
+	if err := a.vault.Delete(mcpOAuthSlot(body.ID)); err != nil {
+		jsonError(w, 500, "No se pueden eliminar las credenciales guardadas.")
+		return
+	}
 	jsonResponse(w, 200, map[string]any{"ok": true})
 }
 
@@ -164,4 +188,47 @@ func (a *app) mcpSyncHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	jsonResponse(w, 200, map[string]any{"ok": true, "results": reports})
+}
+
+func (a *app) mcpOAuthStart(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ID string `json:"id"`
+	}
+	if !decodeXcodeBody(w, r, &body) {
+		return
+	}
+	server, ok := catalogServerByID(a.mcpCatalog(r.Context()), body.ID)
+	if !ok || server.Auth != "oauth" {
+		jsonError(w, 400, "Servidor OAuth desconocido.")
+		return
+	}
+	if server.EnvVar == "" {
+		jsonError(w, 409, "Este servidor no tiene variable de arranque; no se puede entregar un token OAuth.")
+		return
+	}
+	session, err := a.beginMCPOAuth(server)
+	if err != nil {
+		jsonError(w, 409, err.Error())
+		return
+	}
+	jsonResponse(w, 200, session)
+}
+
+func (a *app) mcpOAuthStatus(w http.ResponseWriter) {
+	a.mu.Lock()
+	var session *mcpOAuthSession
+	if a.mcpOAuthFlow != nil {
+		copied := *a.mcpOAuthFlow
+		copied.cancel = nil
+		session = &copied
+	}
+	a.mu.Unlock()
+	jsonResponse(w, 200, map[string]any{"flow": session})
+}
+
+func (a *app) mcpOAuthCancel(w http.ResponseWriter) {
+	a.mu.Lock()
+	a.cancelMCPOAuthLocked()
+	a.mu.Unlock()
+	jsonResponse(w, 200, map[string]any{"ok": true})
 }

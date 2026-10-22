@@ -312,6 +312,12 @@ func (a *app) state(w http.ResponseWriter) {
 		copied := *a.login
 		login = &copied
 	}
+	// A lightweight MCP sign-in summary: the native UI already polls this
+	// endpoint once a second, so the flow needs no separate timer there.
+	var mcpOAuth map[string]any
+	if a.mcpOAuthFlow != nil {
+		mcpOAuth = map[string]any{"server": a.mcpOAuthFlow.Server, "status": a.mcpOAuthFlow.Status, "message": a.mcpOAuthFlow.Message}
+	}
 	snapshot := map[string]any{
 		"connectionReady": a.connectionReadyLocked(), "kiloReady": a.kiloReadyLocked(), "chatgptReady": a.chatGPTReadyLocked(), "chatgpt": a.chatgpt.snapshot(),
 		"claudeDesktopExperimentalModels": a.claudeDesktopExperimentalLocked(),
@@ -321,7 +327,7 @@ func (a *app) state(w http.ResponseWriter) {
 		"imageGeneration":                 a.config.ImageGeneration,
 		"trayDisplay":                     normalizeTrayDisplay(a.config.TrayDisplay),
 		"language":                        a.config.Language, "catalogRevision": a.catalogRevision,
-		"auth": login, "organizations": append([]organization(nil), a.organizations...), "accountEmail": a.accountEmail, "keySaved": a.keySaved,
+		"auth": login, "mcpOAuth": mcpOAuth, "organizations": append([]organization(nil), a.organizations...), "accountEmail": a.accountEmail, "keySaved": a.keySaved,
 		"version": version, "desktop": a.desktop != nil, "port": a.config.Port, "orgId": a.config.OrgID, "orgName": a.orgNameLocked(a.config.OrgID),
 		"update":   a.updateSnapshot(),
 		"localKey": a.config.LocalKey, "hasKey": a.apiKey != "", "remember": a.config.Remember,

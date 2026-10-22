@@ -30,11 +30,14 @@ type mcpServerView struct {
 	Mode        string   `json:"mode"`
 	Harnesses   []string `json:"harnesses"`
 	HasToken    bool     `json:"hasToken"`
+	Connected   bool     `json:"connected"`
 }
 
 type nativeMCPUI struct {
 	started   bool
 	loaded    bool
+	oauth     string // server id with a sign-in in progress, from /api/state
+	oauthSeen string // last status applied, so a transition reloads the catalog once
 	servers   []mcpServerView
 	harnesses []mcpHarness
 	warning   string
@@ -87,8 +90,10 @@ func (u *nativeUI) mcpModeLabel(mode string) string {
 // mcpStatus summarizes a server in one line and whether it is ready to sync.
 func (u *nativeUI) mcpStatus(s mcpServerView) string {
 	switch {
+	case s.Auth == "oauth" && !s.Connected:
+		return u.tr("Sign in to enable it", "Inicia sesión para activarlo")
 	case s.Auth == "oauth":
-		return u.tr("Sign-in is not available yet", "El inicio de sesión aún no está disponible")
+		return u.tr("Signed in", "Sesión iniciada")
 	case !s.Enabled:
 		return u.tr("Disabled", "Desactivado")
 	case s.Auth == "token" && !s.HasToken:
@@ -166,6 +171,33 @@ func (u *nativeUI) mcpClearToken(id string) {
 	})
 }
 
+// mcpSignIn starts the OAuth flow and opens the authorization page. Kilo never
+// opens a browser on its own; the returned URL is handed to the system.
+func (u *nativeUI) mcpSignIn(id string) {
+	u.call("POST", "/api/mcp/oauth/start", map[string]any{"id": id}, func(raw json.RawMessage) {
+		var session struct {
+			AuthorizationURL string `json:"authorizationUrl"`
+			Status           string `json:"status"`
+		}
+		if json.Unmarshal(raw, &session) != nil || session.AuthorizationURL == "" {
+			// A slow discovery step returns "starting"; /api/state reports the URL
+			// through the sign-in button once it is ready, so do not report a
+			// failure here.
+			u.setNotice(nativeToneInfo, u.tr("Preparing the sign-in…", "Preparando el inicio de sesión…"))
+			return
+		}
+		u.open(session.AuthorizationURL)
+	})
+}
+
+func (u *nativeUI) mcpCancelSignIn() {
+	u.call("POST", "/api/mcp/oauth/cancel", map[string]any{}, func(json.RawMessage) {
+		u.mcpState().oauth = ""
+		u.setNotice(nativeToneNeutral, u.tr("Sign-in cancelled.", "Inicio de sesión cancelado."))
+		u.mcpLoad()
+	})
+}
+
 func (u *nativeUI) mcpSync() {
 	u.call("POST", "/api/mcp/sync", map[string]any{}, func(raw json.RawMessage) {
 		var payload struct {
@@ -237,6 +269,18 @@ func (u *nativeUI) mcpServerCard(s mcpServerView) layout.Widget {
 			u.mcpSetState(s.ID, map[string]any{"mode": mode})
 		}), nil, nil))
 	}
+	if s.Auth == "oauth" {
+		var actions layout.Widget
+		switch {
+		case u.mcpState().oauth == s.ID:
+			actions = u.uxsActions(u.button("mcp.oauth.cancel."+s.ID, u.tr("Cancel sign-in", "Cancelar inicio de sesión"), u.mcpCancelSignIn))
+		case s.Connected:
+			actions = u.uxsActions(u.button("mcp.clear."+s.ID, u.tr("Remove", "Eliminar"), func() { u.mcpClearToken(s.ID) }))
+		default:
+			actions = u.uxsActions(u.button("mcp.oauth."+s.ID, u.tr("Sign in", "Iniciar sesión"), func() { u.mcpSignIn(s.ID) }))
+		}
+		rows = append(rows, u.uxsRow(u.tr("Sign-in", "Inicio de sesión"), u.tr("Access tokens expire, so Kilo refreshes one at launch and never writes it to a file.", "Los tokens de acceso caducan, así que Kilo renueva uno al abrir y nunca lo escribe en un archivo."), nil, actions, nil))
+	}
 	if s.DocsURL != "" {
 		url := s.DocsURL
 		rows = append(rows, u.uxsRow(u.tr("Documentation", "Documentación"), "", nil, u.uxsActions(u.button("mcp.docs."+s.ID, u.tr("Open documentation", "Abrir documentación"), func() { u.open(url) })), nil))
@@ -277,6 +321,33 @@ func (u *nativeUI) mcpResultRow(report mcpSyncReport) layout.Widget {
 		detail = strings.Join(problems, " · ")
 	}
 	return u.uxsRow(mcpHarnessName(report.Harness), detail, u.textStyle(14, status, nativeText, font.Medium), nil, nil)
+}
+
+// mcpAcceptState reacts to the MCP sign-in summary carried by /api/state.
+func (u *nativeUI) mcpAcceptState() {
+	s := u.mcpState()
+	flow := nativeMap(u.state["mcpOAuth"])
+	server, status := nativeString(flow, "server"), nativeString(flow, "status")
+	mark := server + ":" + status
+	if mark == s.oauthSeen {
+		return
+	}
+	s.oauthSeen = mark
+	if status == "starting" || status == "pending" {
+		s.oauth = server
+		return
+	}
+	s.oauth = ""
+	switch status {
+	case "connected":
+		u.setNotice(nativeToneSuccess, u.tr("Sign-in complete.", "Inicio de sesión completado."))
+		u.mcpLoad()
+	case "error":
+		u.setNotice(nativeToneError, nativeMessage(nativeString(flow, "message"), u.language))
+		u.mcpLoad()
+	case "cancelled":
+		u.mcpLoad()
+	}
 }
 
 func (u *nativeUI) mcpPanel() layout.Widget {

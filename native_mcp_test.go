@@ -21,14 +21,15 @@ func TestNativeMCPStatusReflectsReadiness(t *testing.T) {
 	base := mcpTestServer()
 
 	for _, test := range []struct {
-		name  string
+		name   string
 		mutate func(*mcpServerView)
-		want  string
+		want   string
 	}{
 		{"token without a credential needs one", func(s *mcpServerView) { s.Enabled = true }, "Add a credential to enable it"},
 		{"token with a credential is ready", func(s *mcpServerView) { s.Enabled, s.HasToken = true, true }, "Ready"},
 		{"disabled is off", func(s *mcpServerView) { s.HasToken = true }, "Disabled"},
-		{"oauth is not signable yet", func(s *mcpServerView) { s.Auth = "oauth" }, "Sign-in is not available yet"},
+		{"oauth needs a sign-in", func(s *mcpServerView) { s.Auth, s.Enabled = "oauth", true }, "Sign in to enable it"},
+		{"oauth with a sign-in is ready", func(s *mcpServerView) { s.Auth, s.Enabled, s.Connected = "oauth", true, true }, "Signed in"},
 		{"open server is ready", func(s *mcpServerView) { s.Auth, s.Enabled = "none", true }, "Ready"},
 	} {
 		s := base

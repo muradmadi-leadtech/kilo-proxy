@@ -14,7 +14,7 @@ func mcpTestApp(dir string, vault credentialVault) *app {
 func mcpTestCatalog() []curatedMCP {
 	return []curatedMCP{
 		{ID: "supermetrics", URL: supermetricsURL, Transport: "http", Auth: "token", Header: "Authorization", ValuePrefix: "Bearer ", EnvVar: "KILO_MCP_SUPERMETRICS_TOKEN", Modes: []string{"A", "B"}},
-		{ID: "amplitude", URL: "https://mcp.eu.amplitude.com/mcp", Transport: "http", Auth: "oauth"},
+		{ID: "amplitude", URL: "https://mcp.eu.amplitude.com/mcp", Transport: "http", Auth: "oauth", Header: "Authorization", ValuePrefix: "Bearer ", EnvVar: "KILO_MCP_AMPLITUDE_TOKEN", Modes: []string{"B"}},
 	}
 }
 
@@ -39,11 +39,15 @@ func TestMCPServerConfigsResolvesModes(t *testing.T) {
 		t.Fatalf("mode B not resolved: %+v", configs[0])
 	}
 
-	// OAuth is not available in P0: reported, and left out so nothing is destroyed.
-	state.Servers["amplitude"] = mcpServerState{Enabled: true}
+	// OAuth is delivered as mode B: the config names the launch variable and no
+	// secret is written, so nothing needs a token lookup here.
+	state.Servers["amplitude"] = mcpServerState{Enabled: true, Mode: "B"}
 	configs, problems = a.mcpServerConfigs(catalog, state, "codex")
-	if len(problems) != 1 || len(configs) != 1 || configs[0].ID != "supermetrics" {
-		t.Fatalf("oauth must be reported and omitted: %v %+v", problems, configs)
+	if len(problems) != 0 {
+		t.Fatalf("oauth must not report a problem: %v", problems)
+	}
+	if configs[1].ID != "amplitude" || !configs[1].Enabled || configs[1].EnvVar != "KILO_MCP_AMPLITUDE_TOKEN" || configs[1].Token != "" {
+		t.Fatalf("oauth must resolve to an env reference only: %+v", configs[1])
 	}
 
 	// Missing token: omitted and reported, never a removal.
