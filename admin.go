@@ -182,6 +182,10 @@ func (a *app) adminHandler() http.Handler {
 			a.terminalPrepareAPI(w, r)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, "/api/mcp/") {
+			a.mcpAPI(w, r)
+			return
+		}
 		if r.URL.Path == "/api/model-library" {
 			a.modelLibraryAPI(w, r)
 			return

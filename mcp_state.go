@@ -14,8 +14,8 @@ const mcpStateLimit = 64 << 10
 // One harness config Kilo can write. These are the profiles Kilo launches, so a
 // mode-B variable is injected at launch and never stored in a file.
 type mcpHarness struct {
-	ID   string
-	Name string
+	ID   string `json:"id"`
+	Name string `json:"name"`
 }
 
 var mcpHarnesses = []mcpHarness{
