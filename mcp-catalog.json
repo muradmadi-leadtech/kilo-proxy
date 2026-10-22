@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "servers": [
+    {
+      "id": "supermetrics",
+      "name": { "en": "Supermetrics", "es": "Supermetrics" },
+      "description": {
+        "en": "Marketing data from 100+ sources — Google Ads, Meta, GA4, TikTok and more.",
+        "es": "Datos de marketing de más de 100 fuentes: Google Ads, Meta, GA4, TikTok y más."
+      },
+      "url": "https://mcp.supermetrics.com/mcp",
+      "transport": "http",
+      "auth": "token",
+      "header": "Authorization",
+      "valuePrefix": "Bearer ",
+      "envVar": "KILO_MCP_SUPERMETRICS_TOKEN",
+      "modes": ["A", "B"],
+      "docsUrl": "https://support.supermetrics.com/"
+    },
+    {
+      "id": "appsflyer",
+      "name": { "en": "AppsFlyer", "es": "AppsFlyer" },
+      "description": {
+        "en": "Mobile attribution, campaign and in-app event data.",
+        "es": "Atribución móvil, campañas y datos de eventos in-app."
+      },
+      "url": "https://mcp.appsflyer.com/auth/mcp",
+      "transport": "http",
+      "auth": "token",
+      "header": "Authorization",
+      "valuePrefix": "Bearer ",
+      "envVar": "KILO_MCP_APPSFLYER_TOKEN",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "signalbeacon",
+      "name": { "en": "SignalBeacon", "es": "SignalBeacon" },
+      "description": {
+        "en": "Server-side signal and delivery diagnostics.",
+        "es": "Diagnóstico de señales y entregas del lado servidor."
+      },
+      "url": "https://signalbeacon.mau.io/mcp",
+      "transport": "http",
+      "auth": "token",
+      "header": "Authorization",
+      "valuePrefix": "Bearer ",
+      "envVar": "KILO_MCP_SIGNALBEACON_TOKEN",
+      "modes": ["A", "B"]
+    },
+    {
+      "id": "amplitude",
+      "name": { "en": "Amplitude", "es": "Amplitude" },
+      "description": {
+        "en": "Product analytics: events, funnels, retention and cohorts.",
+        "es": "Analítica de producto: eventos, embudos, retención y cohortes."
+      },
+      "url": "https://mcp.eu.amplitude.com/mcp",
+      "transport": "http",
+      "auth": "oauth",
+      "docsUrl": "https://amplitude.com/docs"
+    },
+    {
+      "id": "airtable",
+      "name": { "en": "Airtable", "es": "Airtable" },
+      "description": {
+        "en": "Bases, tables and records.",
+        "es": "Bases, tablas y registros."
+      },
+      "url": "https://mcp.airtable.com/mcp",
+      "transport": "http",
+      "auth": "oauth",
+      "docsUrl": "https://airtable.com/developers"
+    }
+  ]
+}
