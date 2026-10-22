@@ -115,3 +115,21 @@ func TestWriteMCPHarnessClaudeCode(t *testing.T) {
 		t.Fatalf("original permissions must be preserved: %v", err)
 	}
 }
+
+func TestMCPLaunchEnvOnlyModeB(t *testing.T) {
+	dir := t.TempDir()
+	a := mcpTestApp(dir, mcpTestVault{mcpVaultSlot("supermetrics"): "tok_1"})
+	file := emptyMCPStateFile()
+	file.Servers["supermetrics"] = mcpServerState{Enabled: true, Mode: "B"}
+	file.Servers["appsflyer"] = mcpServerState{Enabled: true, Mode: "A"}
+	if err := newMCPStateStore(dir).save(file, false); err != nil {
+		t.Fatal(err)
+	}
+	env := a.mcpLaunchEnv()
+	if env["KILO_MCP_SUPERMETRICS_TOKEN"] != "tok_1" {
+		t.Fatalf("mode B must inject the bare token: %v", env)
+	}
+	if _, ok := env["KILO_MCP_APPSFLYER_TOKEN"]; ok {
+		t.Fatal("mode A must not inject a launch variable")
+	}
+}

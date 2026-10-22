@@ -99,6 +99,9 @@ func (a *app) launchProfile(p *clientLaunchPlan, home string) error {
 		if id != "xcode-codex" {
 			p.Env["CODEX_HOME"] = dir
 			p.Env["KILO_LOCAL_API_KEY"] = a.config.LocalKey
+			for name, value := range a.mcpLaunchEnv() {
+				p.Env[name] = value
+			}
 		}
 	case "claude", "xcode-claude":
 		choices, e := read("kilo-models.json")
@@ -126,6 +129,9 @@ func (a *app) launchProfile(p *clientLaunchPlan, home string) error {
 			p.Env["CLAUDE_CONFIG_DIR"] = dir
 			p.Unset = append([]string{}, nativeClaudeResetEnv...)
 			p.Args = []string{"--settings", filepath.Join(dir, "settings.json")}
+			for name, value := range a.mcpLaunchEnv() {
+				p.Env[name] = value
+			}
 		}
 	case "opencode", "zed":
 		root, path, choices, e := a.editorPaths(id)

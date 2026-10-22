@@ -175,3 +175,22 @@ func (a *app) syncMCP(ctx context.Context) ([]mcpSyncReport, error) {
 	}
 	return reports, nil
 }
+
+// mcpLaunchEnv returns the variables Kilo sets when it launches a harness, one
+// per enabled mode-B server. Mode B keeps the secret out of every config file,
+// so the value must match the reference the writers emit: the bare token.
+// Caller holds a.mu.
+func (a *app) mcpLaunchEnv() map[string]string {
+	state := newMCPStateStore(a.dir).value
+	env := map[string]string{}
+	for _, s := range builtinMCPCatalog() {
+		st := state.Servers[s.ID]
+		if !st.Enabled || s.Auth != "token" || st.Mode != "B" || s.EnvVar == "" {
+			continue
+		}
+		if token, err := a.vault.Get(mcpVaultSlot(s.ID)); err == nil && token != "" {
+			env[s.EnvVar] = token
+		}
+	}
+	return env
+}
