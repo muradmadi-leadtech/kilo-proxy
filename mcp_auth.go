@@ -46,18 +46,18 @@ func mcpProbePost(ctx context.Context, transport http.RoundTripper, target, head
 	client := &http.Client{Transport: transport, Timeout: mcpProbeTimeout, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errors.New("could not reach the server")
+		return nil, errors.New("no se pudo contactar con el servidor")
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, errors.New("the server rejected the credential")
+		return nil, errors.New("el servidor rechazó la credencial")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("the server answered HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("el servidor respondió HTTP %d", resp.StatusCode)
 	}
 	data, err := io.ReadAll(io.LimitReader(resp.Body, mcpProbeLimit+1))
 	if err != nil || len(data) > mcpProbeLimit {
-		return nil, errors.New("the server answered with an oversized body")
+		return nil, errors.New("el servidor respondió con un cuerpo demasiado grande")
 	}
 	var reply struct {
 		Result json.RawMessage `json:"result"`
@@ -66,10 +66,10 @@ func mcpProbePost(ctx context.Context, transport http.RoundTripper, target, head
 		} `json:"error"`
 	}
 	if json.Unmarshal(data, &reply) != nil {
-		return nil, errors.New("the server answered with invalid JSON")
+		return nil, errors.New("el servidor respondió con JSON no válido")
 	}
 	if reply.Error != nil {
-		return nil, fmt.Errorf("the server returned an error: %s", reply.Error.Message)
+		return nil, fmt.Errorf("el servidor devolvió un error: %s", reply.Error.Message)
 	}
 	return reply.Result, nil
 }

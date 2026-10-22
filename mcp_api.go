@@ -20,13 +20,13 @@ func (a *app) mcpAPI(w http.ResponseWriter, r *http.Request) {
 	switch strings.TrimPrefix(r.URL.Path, "/api/mcp/") {
 	case "catalog":
 		if r.Method != http.MethodGet {
-			jsonError(w, 405, "Method not allowed.")
+			jsonError(w, 405, "Método no permitido.")
 			return
 		}
 		a.mcpCatalogView(w, r)
 	case "state":
 		if r.Method != http.MethodPost {
-			jsonError(w, 405, "Method not allowed.")
+			jsonError(w, 405, "Método no permitido.")
 			return
 		}
 		a.mcpSetState(w, r)
@@ -37,16 +37,16 @@ func (a *app) mcpAPI(w http.ResponseWriter, r *http.Request) {
 		case http.MethodDelete:
 			a.mcpClearToken(w, r)
 		default:
-			jsonError(w, 405, "Method not allowed.")
+			jsonError(w, 405, "Método no permitido.")
 		}
 	case "sync":
 		if r.Method != http.MethodPost {
-			jsonError(w, 405, "Method not allowed.")
+			jsonError(w, 405, "Método no permitido.")
 			return
 		}
 		a.mcpSyncHandler(w, r)
 	default:
-		jsonError(w, 404, "Unknown MCP endpoint.")
+		jsonError(w, 404, "Endpoint MCP desconocido.")
 	}
 }
 
@@ -80,7 +80,7 @@ func (a *app) mcpSetState(w http.ResponseWriter, r *http.Request) {
 	catalog := a.mcpCatalog(r.Context())
 	server, ok := catalogServerByID(catalog, body.ID)
 	if !ok {
-		jsonError(w, 400, "Unknown MCP server.")
+		jsonError(w, 400, "Servidor MCP desconocido.")
 		return
 	}
 	store := newMCPStateStore(a.dir)
@@ -91,11 +91,11 @@ func (a *app) mcpSetState(w http.ResponseWriter, r *http.Request) {
 	}
 	if body.Mode != nil {
 		if *body.Mode != "" && !mcpModes[*body.Mode] {
-			jsonError(w, 400, "Unknown delivery mode.")
+			jsonError(w, 400, "Modo de entrega desconocido.")
 			return
 		}
 		if *body.Mode == "B" && server.EnvVar == "" {
-			jsonError(w, 400, "This server has no launch variable; use literal delivery.")
+			jsonError(w, 400, "Este servidor no tiene variable de arranque; usa entrega literal.")
 			return
 		}
 		state.Mode = *body.Mode
@@ -121,19 +121,19 @@ func (a *app) mcpSetToken(w http.ResponseWriter, r *http.Request) {
 	}
 	server, ok := catalogServerByID(a.mcpCatalog(r.Context()), body.ID)
 	if !ok || server.Auth != "token" {
-		jsonError(w, 400, "Unknown token server.")
+		jsonError(w, 400, "Servidor de token desconocido.")
 		return
 	}
 	if !validMCPToken(body.Token) {
-		jsonError(w, 400, "Enter a valid token.")
+		jsonError(w, 400, "Introduce un token válido.")
 		return
 	}
 	if err := validateMCPToken(r.Context(), a.transport, server, body.Token); err != nil {
-		jsonError(w, 409, "The server did not accept the token: "+err.Error())
+		jsonError(w, 409, "El servidor no aceptó el token: "+err.Error())
 		return
 	}
 	if err := a.vault.Set(mcpVaultSlot(server.ID), body.Token); err != nil {
-		jsonError(w, 500, "Cannot store the token in the credential vault.")
+		jsonError(w, 500, "No se puede guardar el token en el almacén de credenciales.")
 		return
 	}
 	jsonResponse(w, 200, map[string]any{"ok": true})
@@ -147,11 +147,11 @@ func (a *app) mcpClearToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, ok := catalogServerByID(a.mcpCatalog(r.Context()), body.ID); !ok {
-		jsonError(w, 400, "Unknown MCP server.")
+		jsonError(w, 400, "Servidor MCP desconocido.")
 		return
 	}
 	if err := a.vault.Delete(mcpVaultSlot(body.ID)); err != nil {
-		jsonError(w, 500, "Cannot remove the stored token.")
+		jsonError(w, 500, "No se puede eliminar el token guardado.")
 		return
 	}
 	jsonResponse(w, 200, map[string]any{"ok": true})

@@ -24,6 +24,15 @@ var mcpHarnesses = []mcpHarness{
 	{ID: "claude", Name: "Claude Code"},
 }
 
+func mcpHarnessName(id string) string {
+	for _, h := range mcpHarnesses {
+		if h.ID == id {
+			return h.Name
+		}
+	}
+	return id
+}
+
 func mcpHarnessIDs() map[string]bool {
 	ids := make(map[string]bool, len(mcpHarnesses))
 	for _, h := range mcpHarnesses {
@@ -60,20 +69,20 @@ func cloneMCPStateFile(file mcpStateFile) mcpStateFile {
 
 func validateMCPStateFile(file mcpStateFile) error {
 	if file.SchemaVersion != 1 {
-		return errors.New("Unsupported MCP state schema")
+		return errors.New("Esquema de estado MCP no admitido")
 	}
 	harnesses := mcpHarnessIDs()
 	for id, state := range file.Servers {
 		if !mcpIDPattern.MatchString(id) {
-			return errors.New("Invalid MCP state entry")
+			return errors.New("Entrada de estado MCP no válida")
 		}
 		if state.Mode != "" && !mcpModes[state.Mode] {
-			return errors.New("Invalid MCP delivery mode")
+			return errors.New("Modo de entrega MCP no válido")
 		}
 		seen := map[string]bool{}
 		for _, h := range state.Harnesses {
 			if !harnesses[h] || seen[h] {
-				return errors.New("Invalid MCP harness selection")
+				return errors.New("Selección de apps MCP no válida")
 			}
 			seen[h] = true
 		}
@@ -89,7 +98,7 @@ func decodeMCPStateFile(data []byte) (mcpStateFile, error) {
 		return file, err
 	}
 	if decoder.Decode(&struct{}{}) != io.EOF {
-		return file, errors.New("Trailing content in MCP state")
+		return file, errors.New("Contenido sobrante en el estado MCP")
 	}
 	if err := validateMCPStateFile(file); err != nil {
 		return file, err
@@ -103,11 +112,11 @@ func readMCPStateFile(path string) ([]byte, error) {
 		return nil, err
 	}
 	if !info.Mode().IsRegular() || info.Size() > mcpStateLimit {
-		return nil, errors.New("MCP state must be a regular file smaller than 64 KiB")
+		return nil, errors.New("El estado MCP debe ser un archivo normal de menos de 64 KiB")
 	}
 	data, err := os.ReadFile(path)
 	if len(data) > mcpStateLimit {
-		return nil, errors.New("MCP state exceeds 64 KiB")
+		return nil, errors.New("El estado MCP supera 64 KiB")
 	}
 	return data, err
 }
@@ -154,10 +163,10 @@ func (s *mcpStateStore) save(file mcpStateFile, recover bool) error {
 		return err
 	}
 	if s.recovery && !recover {
-		return errors.New("MCP settings changed outside this window. Reload the saved settings before saving again.")
+		return errors.New("Los ajustes MCP cambiaron fuera de esta ventana. Recarga los ajustes guardados antes de volver a guardar.")
 	}
 	if s.recovery && !s.recoverable {
-		return errors.New("No valid MCP settings backup is available. The damaged files have not been replaced.")
+		return errors.New("No hay ninguna copia válida de los ajustes MCP. Los archivos dañados no se han reemplazado.")
 	}
 	path := filepath.Join(s.dir, "mcp-state.json")
 	encoded, err := json.MarshalIndent(file, "", "  ")
@@ -166,19 +175,19 @@ func (s *mcpStateStore) save(file mcpStateFile, recover bool) error {
 	}
 	encoded = append(encoded, '\n')
 	if len(encoded) > mcpStateLimit {
-		return errors.New("MCP state exceeds 64 KiB")
+		return errors.New("El estado MCP supera 64 KiB")
 	}
 	if s.recovery {
 		if err := atomicCatalogFile(path+".bak", s.disk); err != nil {
-			return errors.New("Cannot back up the damaged MCP settings")
+			return errors.New("No se puede hacer copia de los ajustes MCP dañados")
 		}
 	} else if len(s.disk) > 0 {
 		if err := atomicCatalogFile(path+".bak", s.disk); err != nil {
-			return errors.New("Cannot back up MCP settings")
+			return errors.New("No se puede hacer copia de los ajustes MCP")
 		}
 	}
 	if err := atomicCatalogFile(path, encoded); err != nil {
-		return errors.New("Cannot save MCP settings")
+		return errors.New("No se pueden guardar los ajustes MCP")
 	}
 	s.value, s.disk, s.diskErr = cloneMCPStateFile(file), encoded, nil
 	s.recovery, s.recoverable, s.warning = false, false, ""

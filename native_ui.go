@@ -41,6 +41,7 @@ type nativeUI struct {
 	appIcons            map[string]*nativeAppIcon // application icons by bundle path, loaded in the background
 	library             *nativeLibrary
 	packs               *nativePackUI
+	mcp                 *nativeMCPUI
 	agents              *nativeAgents
 	terminalCommands    *nativeTerminalCommands
 	usageExplorer       *nativeUsageExplorer

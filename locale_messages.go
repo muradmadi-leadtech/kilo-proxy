@@ -28,6 +28,10 @@ func nativeMessage(message, language string) string {
 	if translated, ok := nativeBackendMessages[message]; ok {
 		return translated
 	}
+	const tokenPrefix = "El servidor no aceptó el token: "
+	if strings.HasPrefix(message, tokenPrefix) {
+		return "The server did not accept the token: " + strings.TrimPrefix(message, tokenPrefix)
+	}
 	const schemaPrefix = "No se pudo adaptar el esquema de herramientas para Anthropic: "
 	if strings.HasPrefix(message, schemaPrefix) {
 		return "Could not adapt the tool schema for Anthropic: " + strings.TrimPrefix(message, schemaPrefix)
@@ -37,6 +41,36 @@ func nativeMessage(message, language string) string {
 
 // Canonical backend translations shared with ui/i18n.mjs.
 var nativeBackendMessages = map[string]string{
+	"Método no permitido.":         "Method not allowed.",
+	"Endpoint MCP desconocido.":    "Unknown MCP endpoint.",
+	"Servidor MCP desconocido.":    "Unknown MCP server.",
+	"Modo de entrega desconocido.": "Unknown delivery mode.",
+	"Este servidor no tiene variable de arranque; usa entrega literal.":                                                   "This server has no launch variable; use literal delivery.",
+	"Servidor de token desconocido.":                                                                                      "Unknown token server.",
+	"Introduce un token válido.":                                                                                          "Enter a valid token.",
+	"No se puede guardar el token en el almacén de credenciales.":                                                         "Cannot store the token in the credential vault.",
+	"No se puede eliminar el token guardado.":                                                                             "Cannot remove the stored token.",
+	"Los ajustes MCP cambiaron fuera de esta ventana. Recarga los ajustes guardados antes de volver a guardar.":           "MCP settings changed outside this window. Reload the saved settings before saving again.",
+	"No hay ninguna copia válida de los ajustes MCP. Los archivos dañados no se han reemplazado.":                         "No valid MCP settings backup is available. The damaged files have not been replaced.",
+	"No se puede hacer copia de los ajustes MCP dañados":                                                                  "Cannot back up the damaged MCP settings",
+	"No se puede hacer copia de los ajustes MCP":                                                                          "Cannot back up MCP settings",
+	"No se pueden guardar los ajustes MCP":                                                                                "Cannot save MCP settings",
+	"Esquema de estado MCP no admitido":                                                                                   "Unsupported MCP state schema",
+	"Entrada de estado MCP no válida":                                                                                     "Invalid MCP state entry",
+	"Modo de entrega MCP no válido":                                                                                       "Invalid MCP delivery mode",
+	"Selección de apps MCP no válida":                                                                                     "Invalid MCP harness selection",
+	"Contenido sobrante en el estado MCP":                                                                                 "Trailing content in MCP state",
+	"El estado MCP debe ser un archivo normal de menos de 64 KiB":                                                         "MCP state must be a regular file smaller than 64 KiB",
+	"El estado MCP supera 64 KiB":                                                                                         "MCP state exceeds 64 KiB",
+	"No se puede localizar el directorio personal.":                                                                       "Cannot locate the home directory.",
+	"No hay ningún catálogo MCP disponible.":                                                                              "No MCP catalog is available.",
+	"Este encabezado no se puede entregar por variable de arranque en Codex; usa entrega literal para este servidor":      "Codex cannot read a launch variable for this header; use literal delivery for this server",
+	"El TOML de Codex no es válido; no se guardaron los ajustes MCP":                                                      "Invalid Codex TOML; MCP settings were not saved",
+	"mcp_servers de Codex debe ser una tabla TOML; no se guardaron los ajustes MCP":                                       "Codex mcp_servers must be a TOML table; MCP settings were not saved",
+	"Los ajustes de Claude Code deben ser JSON válido con claves únicas; no se guardó nada.":                              "Claude Code settings must be valid JSON with unique keys; nothing saved.",
+	"mcpServers de Claude Code debe ser un objeto; no se guardó nada.":                                                    "Claude Code mcpServers must be an object; nothing saved.",
+	"No se pueden actualizar los ajustes MCP de Claude Code; no se guardó nada.":                                          "Cannot update Claude Code MCP settings; nothing saved.",
+	"Los ajustes de Claude Code superan el límite de tamaño.":                                                             "Claude Code settings exceed the size limit.",
 	"Elige modelos de Meta o todos los modelos compartidos para Muse Code.":                                               "Choose Meta models or all shared models for Muse Code.",
 	"Selecciona al menos un modelo de Meta en Modelos, elige todos los modelos compartidos o desactiva Muse Code · Kilo.": "Select at least one Meta model in Models, choose all shared models, or disable Muse Code · Kilo.",
 	"La política de modelos de Muse no es válida.":                                                                        "Invalid Muse model policy.",
@@ -461,7 +495,6 @@ var nativeBackendMessages = map[string]string{
 	"Petición JSON no válida.":                                    "Invalid JSON request.",
 	"Origen no permitido.":                                        "Origin not allowed.",
 	"Abre el panel desde la aplicación para recuperar el acceso.": "Open the panel from the application to regain access.",
-	"Método no permitido.":                                        "Method not allowed.",
 	"No se pudo abrir el puerto. Puede estar ocupado por otra instancia; elige otro puerto.":                               "Could not open the port. Another instance may be using it; choose another port.",
 	"El puerto debe estar entre 1024 y 65535.":                                                                             "The port must be between 1024 and 65535.",
 	"Introduce el ID de organización, no su nombre ni la URL.":                                                             "Enter the organization ID, not its name or URL.",

@@ -162,3 +162,21 @@
 #opencode-executable,#cli-path-codex-cli,#cli-path-claude{min-width:0;max-width:100%}
 .usage-query-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0}.usage-query-fields label{display:flex;flex-direction:column;gap:7px;font-size:12px}.usage-query-fields input,.usage-query-fields select{width:100%;min-width:0;padding:9px 11px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--ink)}#usage-explorer fieldset{border:1px solid var(--border);padding:14px;margin:18px 0}#usage-explorer legend{font-size:12px;font-weight:600;padding:0 6px}.usage-query-groups{display:flex;flex-wrap:wrap;gap:12px 20px}.usage-query-groups label{display:flex;align-items:center;gap:7px;font-size:12px}#usage-explorer .account-heading{justify-content:flex-start;margin-top:20px}#usage-explorer td{overflow-wrap:anywhere;max-width:340px}@media(max-width:750px){.usage-query-fields{grid-template-columns:1fr}}
 #usage-explorer table{min-width:1250px}#usage-explorer td{min-width:110px;white-space:pre-wrap}
+
+/* MCP servers: a curated catalog with per-server toggles and credentials. */
+.mcp-card-panel{padding:26px 28px;margin-top:22px;grid-column:1/-1;min-width:0}
+.mcp-card-panel .field-help{margin:8px 0}
+.mcp-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 14px}
+.mcp-toolbar #mcp-search{max-width:340px;margin:0}
+.mcp-harnesses{list-style:none;display:flex;flex-wrap:wrap;gap:8px;padding:0;margin:0 0 16px}
+.mcp-harnesses li{font-size:11px;color:#5f6b53;background:#f2f4ed;border:1px solid var(--border);border-radius:50px;padding:5px 12px}
+.mcp-list{display:grid;grid-template-columns:1fr;gap:14px}
+.mcp-card{display:flex;flex-direction:column;gap:9px;min-width:0;padding:18px 20px;background:#fff;border:1px solid var(--border);border-radius:10px}
+.mcp-card h3{margin:0;font-size:15px;letter-spacing:-.2px}
+.mcp-card p{margin:0;font-size:12px;color:var(--muted);line-height:1.6}
+.mcp-card-meta{font-size:11px;font-weight:600;color:#5f6b53!important}
+.mcp-card .checkbox-label{margin:2px 0 0}
+.mcp-card input[type=password],.mcp-card select{max-width:360px}
+.mcp-card a{font-size:11px;color:#466532;text-decoration:underline;align-self:flex-start}
+.mcp-card button{margin-right:8px}
+@media(max-width:750px){.mcp-card-panel{padding:18px}.mcp-toolbar #mcp-search{max-width:none}.mcp-list{gap:12px}}

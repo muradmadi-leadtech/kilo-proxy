@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"github.com/pelletier/go-toml/v2"
@@ -76,7 +75,7 @@ func codexMCPServerTable(c mcpServerConfig) (map[string]any, error) {
 	case c.ValuePrefix == "":
 		table["env_http_headers"] = map[string]any{c.Header: c.EnvVar}
 	default:
-		return nil, fmt.Errorf("Codex cannot read a launch variable for the %s header; use literal delivery for this server", c.Header)
+		return nil, errors.New("Este encabezado no se puede entregar por variable de arranque en Codex; usa entrega literal para este servidor")
 	}
 	return table, nil
 }
@@ -87,7 +86,7 @@ func codexMCPServerTable(c mcpServerConfig) (map[string]any, error) {
 func mergeCodexMCP(data []byte, servers []mcpServerConfig) ([]byte, []string, error) {
 	var before, after map[string]any
 	if toml.Unmarshal(data, &before) != nil || toml.Unmarshal(data, &after) != nil {
-		return nil, nil, errors.New("Invalid Codex TOML; MCP settings were not saved")
+		return nil, nil, errors.New("El TOML de Codex no es válido; no se guardaron los ajustes MCP")
 	}
 	if after == nil {
 		after = map[string]any{}
@@ -96,7 +95,7 @@ func mergeCodexMCP(data []byte, servers []mcpServerConfig) ([]byte, []string, er
 	if raw, exists := after["mcp_servers"]; exists {
 		m, ok := raw.(map[string]any)
 		if !ok {
-			return nil, nil, errors.New("Codex mcp_servers must be a TOML table; MCP settings were not saved")
+			return nil, nil, errors.New("mcp_servers de Codex debe ser una tabla TOML; no se guardaron los ajustes MCP")
 		}
 		table = m
 	}

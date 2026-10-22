@@ -78,6 +78,7 @@ var (
 	nativeIconDelete       = mustNativeIcon(icons.ActionDelete)
 	nativeIconStar         = mustNativeIcon(icons.ToggleStar)
 	nativeIconStarOutline  = mustNativeIcon(icons.ToggleStarBorder)
+	nativeIconMCP          = mustNativeIcon(icons.ActionExtension)
 )
 
 func mustNativeIcon(data []byte) *widget.Icon {
@@ -291,7 +292,7 @@ func (u *nativeUI) sidebar(gtx layout.Context) layout.Dimensions {
 					)
 				}),
 				layout.Rigid(layout.Spacer{Height: 28}.Layout),
-				layout.Rigid(u.column(u.navButton("agents", u.tr("Apps", "Apps"), nativeIconAgents), u.navButton("models", u.tr("Models", "Modelos"), nativeIconModels), u.navButton("activity", u.tr("Activity", "Actividad"), nativeIconActivity), u.navButton("settings", u.tr("Settings", "Ajustes"), nativeIconSettings))),
+				layout.Rigid(u.column(u.navButton("agents", u.tr("Apps", "Apps"), nativeIconAgents), u.navButton("models", u.tr("Models", "Modelos"), nativeIconModels), u.navButton("activity", u.tr("Activity", "Actividad"), nativeIconActivity), u.navButton("mcp", "MCP", nativeIconMCP), u.navButton("settings", u.tr("Settings", "Ajustes"), nativeIconSettings))),
 				layout.Flexed(1, layout.Spacer{}.Layout),
 				// Navigation stays under the brand; the proxy status is pinned above the footer.
 				layout.Rigid(u.proxyStatusBlock()),
@@ -441,8 +442,8 @@ func (u *nativeUI) proxyControl() layout.Widget {
 func (u *nativeUI) pageTop(gtx layout.Context) layout.Dimensions {
 	gtx.Constraints.Min.Y = 0
 	gtx.Constraints.Max.Y = min(gtx.Constraints.Max.Y, gtx.Dp(128))
-	titles := map[string][2]string{"settings": {"Settings", "Ajustes"}, "connection": {"Settings", "Ajustes"}, "agents": {"Your apps", "Tus apps"}, "models": {"Models", "Modelos"}, "clients": {"Your apps", "Tus apps"}, "activity": {"Activity", "Actividad"}, "setup": {"Welcome to Kilo Proxy", "Bienvenido a Kilo Proxy"}}
-	descriptions := map[string][2]string{"settings": {"Your Kilo and ChatGPT accounts, appearance and connection.", "Tus cuentas de Kilo y ChatGPT, apariencia y conexión."}, "connection": {"Your Kilo and ChatGPT accounts, appearance and connection.", "Tus cuentas de Kilo y ChatGPT, apariencia y conexión."}, "agents": {"Open an app and it will use your Kilo models automatically.", "Abre una app y usará tus modelos de Kilo automáticamente."}, "models": {"The models you will see in all your apps.", "Los modelos que verás en todas tus apps."}, "clients": {"What it opens with, its models and advanced options.", "Con qué abre, sus modelos y opciones avanzadas."}, "activity": {"What your apps used and what it cost.", "Lo que han usado tus apps y lo que ha costado."}, "setup": {"Three quick steps: sign in, choose models and open your apps.", "Tres pasos rápidos: inicia sesión, elige modelos y abre tus apps."}}
+	titles := map[string][2]string{"settings": {"Settings", "Ajustes"}, "connection": {"Settings", "Ajustes"}, "agents": {"Your apps", "Tus apps"}, "models": {"Models", "Modelos"}, "clients": {"Your apps", "Tus apps"}, "activity": {"Activity", "Actividad"}, "mcp": {"MCP", "MCP"}, "setup": {"Welcome to Kilo Proxy", "Bienvenido a Kilo Proxy"}}
+	descriptions := map[string][2]string{"settings": {"Your Kilo and ChatGPT accounts, appearance and connection.", "Tus cuentas de Kilo y ChatGPT, apariencia y conexión."}, "connection": {"Your Kilo and ChatGPT accounts, appearance and connection.", "Tus cuentas de Kilo y ChatGPT, apariencia y conexión."}, "agents": {"Open an app and it will use your Kilo models automatically.", "Abre una app y usará tus modelos de Kilo automáticamente."}, "models": {"The models you will see in all your apps.", "Los modelos que verás en todas tus apps."}, "clients": {"What it opens with, its models and advanced options.", "Con qué abre, sus modelos y opciones avanzadas."}, "activity": {"What your apps used and what it cost.", "Lo que han usado tus apps y lo que ha costado."}, "mcp": {"Connect your own MCP servers to every app.", "Conecta tus propios servidores MCP a todas las apps."}, "setup": {"Three quick steps: sign in, choose models and open your apps.", "Tres pasos rápidos: inicia sesión, elige modelos y abre tus apps."}}
 	title, description := titles[u.page], descriptions[u.page]
 	if lead, ok := u.uxsPageLead(); ok {
 		description = lead
@@ -515,7 +516,7 @@ func (u *nativeUI) Layout(gtx layout.Context) layout.Dimensions {
 					if wide {
 						return layout.Dimensions{}
 					}
-					choices := []nativeChoice{{Value: "agents", Label: u.tr("Apps", "Apps")}, {Value: "models", Label: u.tr("Models", "Modelos")}, {Value: "activity", Label: u.tr("Activity", "Actividad")}, {Value: "settings", Label: u.tr("Settings", "Ajustes")}}
+					choices := []nativeChoice{{Value: "agents", Label: u.tr("Apps", "Apps")}, {Value: "models", Label: u.tr("Models", "Modelos")}, {Value: "activity", Label: u.tr("Activity", "Actividad")}, {Value: "mcp", Label: "MCP"}, {Value: "settings", Label: u.tr("Settings", "Ajustes")}}
 					selected := u.page
 					if selected == "clients" {
 						selected = "agents"
@@ -555,6 +556,8 @@ func (u *nativeUI) Layout(gtx layout.Context) layout.Dimensions {
 						panel = u.clientsPanel()
 					case "activity":
 						panel = u.activityPanel()
+					case "mcp":
+						panel = u.mcpPanel()
 					default:
 						panel = u.settingsPanel()
 					}

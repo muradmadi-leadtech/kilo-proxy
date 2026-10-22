@@ -37,7 +37,7 @@ func firstNonEmpty(values ...string) string {
 func (a *app) mcpTargets() ([]mcpTarget, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, errors.New("Cannot locate the home directory.")
+		return nil, errors.New("No se puede localizar el directorio personal.")
 	}
 	dirs := map[string]string{
 		"codex":     firstNonEmpty(a.codexProfileDir, filepath.Join(home, ".codex-kilo-desktop")),
@@ -99,7 +99,7 @@ func (a *app) writeMCPHarness(target mcpTarget, configs []mcpServerConfig) mcpSy
 	report := mcpSyncReport{Harness: target.harness}
 	info, err := os.Lstat(target.dir)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		report.Status, report.Reason = "skipped", "profile not prepared"
+		report.Status, report.Reason = "skipped", "perfil no preparado"
 		return report
 	}
 	path := filepath.Join(target.dir, target.file)
@@ -107,7 +107,7 @@ func (a *app) writeMCPHarness(target mcpTarget, configs []mcpServerConfig) mcpSy
 	if errors.Is(err, os.ErrNotExist) {
 		old = nil
 	} else if err != nil {
-		report.Status, report.Reason = "failed", "cannot read "+target.file
+		report.Status, report.Reason = "failed", "no se puede leer "+target.file
 		return report
 	}
 	var merged []byte
@@ -157,7 +157,7 @@ func (a *app) writeMCPHarness(target mcpTarget, configs []mcpServerConfig) mcpSy
 func (a *app) syncMCP(ctx context.Context) ([]mcpSyncReport, error) {
 	catalog := a.mcpCatalog(ctx) // takes a.mu internally
 	if len(catalog) == 0 {
-		return nil, errors.New("No MCP catalog is available.")
+		return nil, errors.New("No hay ningún catálogo MCP disponible.")
 	}
 	a.mu.Lock()
 	state := newMCPStateStore(a.dir).value

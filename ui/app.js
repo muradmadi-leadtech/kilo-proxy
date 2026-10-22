@@ -4,6 +4,7 @@ import {renderAccountUsage} from './account-usage.mjs';
 import {createUsageExplorer} from './usage-explorer.mjs';
 import {renderUpdates, updateView, packageUpdateFailureCode} from './update-helper.mjs';
 import {createOpenMausBotHelper} from './openmausbot-helper.mjs';
+import {createMCPHelper} from './mcp-helper.mjs';
 import {createT3CodeHelper} from './t3-code-helper.mjs';
 import {createMuseHelper} from './muse-helper.mjs';
 import {createSynaraHelper} from './synara-helper.mjs';
@@ -217,6 +218,7 @@ function launch(key) {
   return launchCommand({client,key,shell:$('launch-shell').value,platform:$('desktop-platform').value,appPath:$('desktop-app-path').value.trim(),language,catalog:isCodexClient() && codexSelection().models.size > 0});
 }
 const openMausBotHelper=createOpenMausBotHelper({api,onChange:renderClientLaunch});
+const mcpHelper=createMCPHelper({api,onChange:()=>{}});
 const museHelper=createMuseHelper({api,onChange:renderClientLaunch});
 const t3CodeHelper=createT3CodeHelper({api,onChange:renderClientLaunch});
 const omnigentHelper=createOmnigentHelper({api,onChange:renderClientLaunch,onPreferencesConfirmed:()=>{launchRefreshPending=true;if(!launchDetecting)void detectLaunchClients();}});
@@ -469,6 +471,7 @@ function render(s) {
   if (updateInstall.version && (!updateView(s.update).canInstall || updateInstall.version !== s.update?.latestVersion || updateInstall.method !== s.update?.installMethod)) updateInstall = {};
   renderUpdates(document, s, language, updateCheckPending, updateRequestError, updateInstall);
   cliPreferencesHelper.render({language,launchInfo,launchDetecting});
+  mcpHelper.render({state,language});
   $('toggle-key').textContent = t($('api-key').type === 'password' ? 'Ver' : 'Ocultar');
   $('toggle-key').setAttribute('aria-label', t($('api-key').type === 'password' ? 'Mostrar API key' : 'Ocultar API key'));
   $('version').textContent = 'v' + s.version;

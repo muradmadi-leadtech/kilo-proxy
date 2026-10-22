@@ -71,11 +71,11 @@ func managedClaudeMCPServer(value hujson.Value, c mcpServerConfig) bool {
 func mergeClaudeCodeMCP(data []byte, servers []mcpServerConfig) ([]byte, []string, error) {
 	tree, err := hujson.Parse(data)
 	if err != nil || tree.Value.Kind() != '{' || !uniqueEditorJSON(tree) {
-		return nil, nil, errors.New("Claude Code settings must be valid JSON with unique keys; nothing saved.")
+		return nil, nil, errors.New("Los ajustes de Claude Code deben ser JSON válido con claves únicas; no se guardó nada.")
 	}
 	container := tree.Find("/mcpServers")
 	if container != nil && container.Value.Kind() != '{' {
-		return nil, nil, errors.New("Claude Code mcpServers must be an object; nothing saved.")
+		return nil, nil, errors.New("mcpServers de Claude Code debe ser un objeto; no se guardó nada.")
 	}
 	var operations []map[string]any
 	var skipped []string
@@ -110,11 +110,11 @@ func mergeClaudeCodeMCP(data []byte, servers []mcpServerConfig) ([]byte, []strin
 	}
 	patch, _ := json.Marshal(operations)
 	if err := tree.Patch(patch); err != nil {
-		return nil, nil, errors.New("Cannot update Claude Code MCP settings; nothing saved.")
+		return nil, nil, errors.New("No se pueden actualizar los ajustes MCP de Claude Code; no se guardó nada.")
 	}
 	result := tree.Pack()
 	if len(result) > catalogLimit {
-		return nil, nil, errors.New("Claude Code settings exceed the size limit.")
+		return nil, nil, errors.New("Los ajustes de Claude Code superan el límite de tamaño.")
 	}
 	return result, skipped, nil
 }
