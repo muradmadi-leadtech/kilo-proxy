@@ -7,8 +7,26 @@ const catalog = () => ({servers:[server({id:'supermetrics', name:{en:'Supermetri
 const tick = () => new Promise(resolve => setImmediate(resolve));
 function fixture(t, api) {
  const previous = globalThis.document, nodes = new Map(), calls = [];
- const element = () => ({children:[],textContent:'',value:'',checked:false,disabled:false,hidden:false,placeholder:'',className:'',type:'',href:'',classList:{toggle(){}},replaceChildren(){this.children=[];},append(...items){this.children.push(...items);},addEventListener(){}});
- globalThis.document = {getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement:element};
+ const element = () => {
+  const node = {children:[],textContent:'',checked:false,disabled:false,hidden:false,placeholder:'',className:'',type:'',href:'',classList:{toggle(){}},replaceChildren(){this.children=[];},addEventListener(){}};
+  let value = '';
+  // A real <select> only holds a value it has a matching <option> for, and
+  // adopts its first option once one exists. Modelling that is what makes the
+  // "set value before appending options" bug observable.
+  Object.defineProperty(node, 'value', {
+   get(){ return value; },
+   set(next){ value = node.tagName === 'select' && !node.children.some(child => child.tagName === 'option' && child.value === next) ? '' : next; },
+  });
+  node.append = (...items) => {
+   node.children.push(...items);
+   if (node.tagName === 'select' && value === '') {
+    const first = node.children.find(child => child.tagName === 'option');
+    if (first) value = first.value;
+   }
+  };
+  return node;
+ };
+ globalThis.document = {getElementById(id){if(!nodes.has(id))nodes.set(id,element());return nodes.get(id);},createElement(tag){const node = element(); node.tagName = tag === 'select' ? 'select' : tag === 'option' ? 'option' : tag; return node;}};
  t.after(()=>{globalThis.document = previous;});
  const scheduled = [];
  const helper = createMCPHelper({api:(path, body, method) => {calls.push({path, body, method}); return api(path, body, method);}, onChange(){}, schedule:(run, ms)=>{scheduled.push({run, ms});}});
@@ -188,4 +206,69 @@ test('a failed sign-in start reports the error and keeps something actionable', 
  await helper.reload();
  assert.equal(await helper.oauthStart('amplitude'), false);
  assert.match(helper.state().error, /already in progress/);
+});
+
+test('a mode selector reflects the saved mode, not the first option', async t => {
+ // Regression: setting a select's value before its options exist leaves it on
+ // the first option, so a card kept showing "A" while the state said "B".
+ for (const mode of ['A', 'B']) {
+  const withMode = {servers:[server({id:'supermetrics', enabled:true, mode})], harnesses:[], warning:''};
+  const {helper, nodes} = fixture(t, async () => withMode);
+  await helper.reload();
+  const select = nodes.get('mcp-list').children[0].children.find(child => child.tagName === 'select');
+  assert.ok(select, 'a token server with two modes needs a selector');
+  assert.equal(select.value, mode, `the selector must show the saved mode ${mode}`);
+ }
+});
+
+test('a card for a saved mode B renders the selector on B', async t => {
+ const withB = {servers:[server({id:'supermetrics', enabled:true, mode:'B'})], harnesses:[], warning:''};
+ const {helper, nodes} = fixture(t, async () => withB);
+ await helper.reload();
+ const select = nodes.get('mcp-list').children[0].children.find(child => child.tagName === 'select');
+ assert.ok(select, 'a token server with two modes needs a selector');
+ assert.equal(select.value, 'B');
+});
+
+test('sync renders one line per harness and hides the report until it runs', async t => {
+ const results = [
+  {harness:'codex', status:'changed'},
+  {harness:'codex-cli', status:'skipped', reasonCode:'profile-not-prepared'},
+  {harness:'claude', status:'failed', problems:[{server:'supermetrics', code:'missing-token'}], skipped:['appsflyer']},
+ ];
+ const {helper, nodes} = fixture(t, async path => path === 'mcp/catalog' ? catalog() : {ok:true, results});
+ await helper.reload();
+ assert.equal(nodes.get('mcp-report').hidden, true, 'no report before a sync');
+ await helper.sync();
+ const report = nodes.get('mcp-report');
+ assert.equal(report.hidden, false);
+ assert.equal(report.children.length, 3);
+ assert.match(report.children[0].textContent, /Codex Desktop · Updated/);
+ assert.match(report.children[1].textContent, /Codex CLI · Skipped · This app has not been prepared yet/);
+ assert.match(report.children[2].textContent, /Claude Code · Failed/);
+ assert.match(report.children[2].textContent, /supermetrics: no saved credential/);
+ assert.match(report.children[2].textContent, /In use by another configuration: appsflyer/);
+});
+
+test('the sync report is localized in Spanish, with no backend prose leaking', async t => {
+ const results = [
+  {harness:'codex', status:'skipped', reasonCode:'profile-not-prepared'},
+  {harness:'claude', status:'failed', problems:[{server:'supermetrics', code:'missing-token'}]},
+ ];
+ const {helper, nodes} = fixture(t, async path => path === 'mcp/catalog' ? catalog() : {ok:true, results});
+ await helper.reload();
+ helper.render({state:{}, language:'es'});
+ await helper.sync();
+ const text = nodes.get('mcp-report').children.map(node => node.textContent).join(' | ');
+ assert.match(text, /Omitido · Esta app aún no se ha preparado/);
+ assert.match(text, /Falló · supermetrics: sin credencial guardada/);
+ assert.equal(/profile-not-prepared|missing-token|no saved credential/.test(text), false, 'codes and English must not reach the user');
+});
+
+test('an unknown reason falls back to the phrase i18n knows, never to a code', async t => {
+ const {helper, nodes} = fixture(t, async path => path === 'mcp/catalog' ? catalog() : {ok:true, results:[{harness:'codex', status:'failed', reason:'Método no permitido.', reasonCode:'something-new'}]});
+ await helper.reload();
+ await helper.sync();
+ assert.equal(nodes.get('mcp-report').children[0].textContent.includes('something-new'), false);
+ assert.match(nodes.get('mcp-report').children[0].textContent, /Method not allowed/);
 });

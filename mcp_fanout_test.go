@@ -55,8 +55,8 @@ func TestMCPServerConfigsResolvesModes(t *testing.T) {
 	state.Servers["supermetrics"] = mcpServerState{Enabled: true, Mode: "A"}
 	a = mcpTestApp(t.TempDir(), mcpTestVault{})
 	configs, problems = a.mcpServerConfigs(catalog, state, "codex")
-	if len(problems) != 1 {
-		t.Fatalf("a missing token must be reported: %v", problems)
+	if len(problems) != 1 || problems[0].Server != "supermetrics" || problems[0].Code != "missing-token" {
+		t.Fatalf("a missing token must be reported as a code: %+v", problems)
 	}
 	for _, cfg := range configs {
 		if cfg.ID == "supermetrics" {
@@ -135,5 +135,30 @@ func TestMCPLaunchEnvOnlyModeB(t *testing.T) {
 	}
 	if _, ok := env["KILO_MCP_APPSFLYER_TOKEN"]; ok {
 		t.Fatal("mode A must not inject a launch variable")
+	}
+}
+
+func TestMCPReportUsesStableReasonCodes(t *testing.T) {
+	dir := t.TempDir()
+	a := mcpTestApp(dir, mcpTestVault{})
+	// A profile directory that does not exist yet.
+	report := a.writeMCPHarness(mcpTarget{harness: "codex", dir: filepath.Join(dir, "absent"), file: "config.toml"}, nil)
+	if report.Status != "skipped" || report.ReasonCode != "profile-not-prepared" {
+		t.Fatalf("expected a stable reason code, got %+v", report)
+	}
+	if report.Reason != "" {
+		t.Fatal("localized prose must not be sent to the UI")
+	}
+	// A directory that exists but holds invalid TOML.
+	bad := filepath.Join(dir, "bad")
+	if err := os.MkdirAll(bad, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(bad, "config.toml"), []byte("this is not = = toml"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	report = a.writeMCPHarness(mcpTarget{harness: "codex", dir: bad, file: "config.toml"}, []mcpServerConfig{{ID: "x", Enabled: true, URL: "https://x.example/mcp", Header: "Authorization", ValuePrefix: "Bearer ", Token: "t"}})
+	if report.Status != "failed" || report.ReasonCode != "" || report.Reason == "" {
+		t.Fatalf("an unexpected failure must carry its detail: %+v", report)
 	}
 }

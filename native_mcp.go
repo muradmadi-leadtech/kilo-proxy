@@ -305,6 +305,32 @@ func (u *nativeUI) mcpSyncPanel() layout.Widget {
 	return u.uxsBlock(u.tr("Synchronize every app", "Sincronizar todas las apps"), u.tr("Writes each app's own MCP configuration", "Escribe la configuración MCP de cada app"), rows...)
 }
 
+func (u *nativeUI) mcpReasonLabel(report mcpSyncReport) string {
+	if label := map[string]string{
+		"profile-not-prepared": u.tr("This app has not been prepared yet", "Esta app aún no se ha preparado"),
+		"unreadable-config":    u.tr("Its configuration cannot be read safely", "Su configuración no se puede leer de forma segura"),
+	}[report.ReasonCode]; label != "" {
+		return label
+	}
+	if report.Reason == "" {
+		return ""
+	}
+	return nativeMessage(report.Reason, u.language)
+}
+
+func (u *nativeUI) mcpProblemLabel(problem mcpProblem) string {
+	name := mcpHarnessName(problem.Server)
+	switch problem.Code {
+	case "missing-token":
+		return name + ": " + u.tr("no saved credential", "sin credencial guardada")
+	case "no-launch-variable":
+		return name + ": " + u.tr("no launch variable", "sin variable de arranque")
+	case "unsupported-auth":
+		return name + ": " + u.tr("unsupported credential kind", "tipo de credencial no admitido")
+	}
+	return name + ": " + nativeMessage(problem.Detail, u.language)
+}
+
 func (u *nativeUI) mcpResultRow(report mcpSyncReport) layout.Widget {
 	status := map[string]string{
 		"changed":   u.tr("Updated", "Actualizado"),
@@ -312,8 +338,11 @@ func (u *nativeUI) mcpResultRow(report mcpSyncReport) layout.Widget {
 		"skipped":   u.tr("Skipped", "Omitido"),
 		"failed":    u.tr("Failed", "Falló"),
 	}[report.Status]
-	detail := report.Reason
-	problems := append([]string(nil), report.Problems...)
+	detail := u.mcpReasonLabel(report)
+	problems := make([]string, 0, len(report.Problems))
+	for _, problem := range report.Problems {
+		problems = append(problems, u.mcpProblemLabel(problem))
+	}
 	if len(report.Skipped) > 0 {
 		problems = append(problems, u.tr("In use by another configuration: ", "En uso por otra configuración: ")+strings.Join(report.Skipped, ", "))
 	}

@@ -177,6 +177,16 @@ func (s *mcpStateStore) save(file mcpStateFile, recover bool) error {
 	if len(encoded) > mcpStateLimit {
 		return errors.New("El estado MCP supera 64 KiB")
 	}
+	// Mirror the other stores (model packs, usage history): the settings
+	// directory may not exist yet on a fresh profile, and the store must not
+	// depend on another component having created it.
+	if err := os.MkdirAll(s.dir, 0700); err != nil {
+		return errors.New("No se puede crear el directorio de ajustes")
+	}
+	info, err := os.Lstat(s.dir)
+	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return errors.New("Los ajustes de Kilo Proxy deben usar un directorio real")
+	}
 	if s.recovery {
 		if err := atomicCatalogFile(path+".bak", s.disk); err != nil {
 			return errors.New("No se puede hacer copia de los ajustes MCP dañados")

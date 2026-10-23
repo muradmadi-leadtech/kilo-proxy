@@ -15,13 +15,22 @@ type mcpTarget struct {
 	file    string
 }
 
+// A problem is reported as a stable code so each UI can localize it, with the
+// upstream detail kept for anything that cannot be described by a code.
+type mcpProblem struct {
+	Server string `json:"server"`
+	Code   string `json:"code"`
+	Detail string `json:"detail,omitempty"`
+}
+
 type mcpSyncReport struct {
-	Harness  string   `json:"harness"`
-	Status   string   `json:"status"` // changed | unchanged | skipped | failed
-	Reason   string   `json:"reason,omitempty"`
-	Skipped  []string `json:"skipped,omitempty"`
-	Problems []string `json:"problems,omitempty"`
-	Backup   string   `json:"backup,omitempty"`
+	Harness    string       `json:"harness"`
+	Status     string       `json:"status"` // changed | unchanged | skipped | failed
+	ReasonCode string       `json:"reasonCode,omitempty"`
+	Reason     string       `json:"reason,omitempty"`
+	Skipped    []string     `json:"skipped,omitempty"`
+	Problems   []mcpProblem `json:"problems,omitempty"`
+	Backup     string       `json:"backup,omitempty"`
 }
 
 func firstNonEmpty(values ...string) string {
@@ -56,9 +65,9 @@ func (a *app) mcpTargets() ([]mcpTarget, error) {
 // writer needs for one harness. A disabled server is included so an entry Kilo
 // wrote earlier is removed; a server that cannot be resolved (no token yet,
 // OAuth in P0) is omitted and reported, so a working entry is never destroyed.
-func (a *app) mcpServerConfigs(catalog []curatedMCP, state mcpStateFile, harness string) ([]mcpServerConfig, []string) {
+func (a *app) mcpServerConfigs(catalog []curatedMCP, state mcpStateFile, harness string) ([]mcpServerConfig, []mcpProblem) {
 	var configs []mcpServerConfig
-	var problems []string
+	var problems []mcpProblem
 	for _, s := range catalog {
 		st := state.Servers[s.ID]
 		selected := len(st.Harnesses) == 0 || slices.Contains(st.Harnesses, harness)
@@ -78,19 +87,19 @@ func (a *app) mcpServerConfigs(catalog []curatedMCP, state mcpStateFile, harness
 			if mode == "B" && s.EnvVar != "" {
 				cfg.Enabled, cfg.EnvVar = true, s.EnvVar
 			} else if mode == "B" {
-				problems = append(problems, s.ID+": no launch variable configured")
+				problems = append(problems, mcpProblem{Server: s.ID, Code: "no-launch-variable"})
 				continue
 			} else if token, err := a.vault.Get(mcpVaultSlot(s.ID)); err == nil && token != "" {
 				cfg.Enabled, cfg.Token = true, token
 			} else {
-				problems = append(problems, s.ID+": no saved token")
+				problems = append(problems, mcpProblem{Server: s.ID, Code: "missing-token"})
 				continue
 			}
 		case "oauth":
 			// Mode B only: the config names the variable, never the token.
 			cfg.Enabled, cfg.EnvVar = true, s.EnvVar
 		default:
-			problems = append(problems, s.ID+": unsupported credential kind")
+			problems = append(problems, mcpProblem{Server: s.ID, Code: "unsupported-auth"})
 			continue
 		}
 		configs = append(configs, cfg)
@@ -102,7 +111,7 @@ func (a *app) writeMCPHarness(target mcpTarget, configs []mcpServerConfig) mcpSy
 	report := mcpSyncReport{Harness: target.harness}
 	info, err := os.Lstat(target.dir)
 	if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-		report.Status, report.Reason = "skipped", "perfil no preparado"
+		report.Status, report.ReasonCode = "skipped", "profile-not-prepared"
 		return report
 	}
 	path := filepath.Join(target.dir, target.file)
@@ -110,7 +119,7 @@ func (a *app) writeMCPHarness(target mcpTarget, configs []mcpServerConfig) mcpSy
 	if errors.Is(err, os.ErrNotExist) {
 		old = nil
 	} else if err != nil {
-		report.Status, report.Reason = "failed", "no se puede leer "+target.file
+		report.Status, report.ReasonCode = "failed", "unreadable-config"
 		return report
 	}
 	var merged []byte

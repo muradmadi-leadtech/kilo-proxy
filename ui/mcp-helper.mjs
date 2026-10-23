@@ -1,3 +1,7 @@
+import {translate} from './i18n.mjs';
+
+const codeKey = code => code === 'missing-token' ? 'missingToken' : code === 'no-launch-variable' ? 'noLaunchVariable' : code === 'unsupported-auth' ? 'unsupportedAuth' : '';
+
 export function mcpAuthLabel(auth, language = 'en') {
  const labels = {token:['Token','Token'],none:['No credential','Sin credencial'],oauth:['OAuth','OAuth']};
  return (labels[auth] || ['',''])[language === 'es' ? 1 : 0];
@@ -58,8 +62,10 @@ export function createMCPHelper({api, onChange, schedule = (run, ms) => setTimeo
   item.append(name, description, meta, enable);
   if (mode) {
    const select = document.createElement('select');
-   select.value = mode;
+   select.className = 'mcp-mode';
    for (const value of server.modes) { const option = document.createElement('option'); option.value = value; option.textContent = value + ' · ' + mcpModeLabel(value, ctx.language); select.append(option); }
+   // Set the value after the options exist: appending an option resets selection.
+   select.value = mode;
    select.addEventListener('change', () => { void setMode(server.id, select.value); });
    item.append(select);
   }
@@ -72,7 +78,10 @@ export function createMCPHelper({api, onChange, schedule = (run, ms) => setTimeo
    const clear = document.createElement('button');
    clear.type = 'button'; clear.textContent = L('Clear token','Borrar token'); clear.disabled = working || !server.hasToken;
    clear.addEventListener('click', () => { void clearToken(server.id); });
-   item.append(field, save, clear);
+   const actions = document.createElement('div');
+   actions.className = 'mcp-actions';
+   actions.append(field, save, clear);
+   item.append(actions);
   }
   if (server.auth === 'oauth') {
    const help = document.createElement('p');
@@ -106,6 +115,14 @@ export function createMCPHelper({api, onChange, schedule = (run, ms) => setTimeo
   }
   return item;
  }
+ // Backend reports a stable code so the text can be localized here; an unknown
+ // detail falls back to translate() and then to the server's own wording.
+ const reasonLabel = result => ({'profile-not-prepared':L('This app has not been prepared yet','Esta app aún no se ha preparado'), 'unreadable-config':L('Its configuration cannot be read safely','Su configuración no se puede leer de forma segura')}[result.reasonCode]) || translate(result.reason || '', ctx.language);
+ const problemLabel = problem => {
+  const name = (harnesses.find(h => h.id === problem.server) || {}).name || problem.server;
+  const code = {missingToken:L('no saved credential','sin credencial guardada'), noLaunchVariable:L('no launch variable','sin variable de arranque'), unsupportedAuth:L('unsupported credential kind','tipo de credencial no admitido')}[codeKey(problem.code)];
+  return name + ': ' + (code || translate(problem.detail || '', ctx.language));
+ };
  function render(next = ctx) {
   ctx = next;
   if (!wired) { wired = true; $('mcp-sync')?.addEventListener('click', () => void sync()); $('mcp-search')?.addEventListener('input', () => render()); }
@@ -121,6 +138,21 @@ export function createMCPHelper({api, onChange, schedule = (run, ms) => setTimeo
   const list = $('mcp-list');
   list.replaceChildren();
   for (const server of filtered()) list.append(card(server));
+  const report = $('mcp-report');
+  if (report) {
+   report.replaceChildren();
+   for (const result of results || []) {
+    const line = document.createElement('p');
+    const label = {changed:L('Updated','Actualizado'), unchanged:L('Already up to date','Ya está al día'), skipped:L('Skipped','Omitido'), failed:L('Failed','Falló')}[result.status] || result.status;
+    const harness = (harnesses.find(h => h.id === result.harness) || {}).name || result.harness;
+    const notes = (result.problems || []).map(problemLabel);
+    if (result.skipped?.length) notes.push(L('In use by another configuration: ','En uso por otra configuración: ') + result.skipped.join(', '));
+    const reason = reasonLabel(result);
+    line.textContent = harness + ' · ' + label + (reason ? ' · ' + reason : '') + (notes.length ? ' · ' + notes.join(' · ') : '');
+    report.append(line);
+   }
+   report.hidden = !(results && results.length);
+  }
   $('mcp-status').textContent = error || (working ? L('Applying the change…','Aplicando el cambio…') : loading ? L('Loading the MCP catalog…','Cargando el catálogo MCP…') : loaded ? L('MCP catalog loaded.','Catálogo MCP cargado.') : '');
   $('mcp-status').classList.toggle('error', !!error);
   $('mcp-privacy').textContent = L('The credential is stored in the local credential vault and never shown again. Mode B keeps it out of every config file.','La credencial se guarda en el almacén local de credenciales y no se vuelve a mostrar. El modo B la mantiene fuera de todos los archivos de configuración.');

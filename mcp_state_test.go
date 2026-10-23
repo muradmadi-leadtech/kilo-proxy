@@ -68,3 +68,22 @@ func TestMCPStateRejectsInvalid(t *testing.T) {
 		}
 	}
 }
+
+// A fresh profile has no settings directory yet; the store must create it
+// rather than depend on another component having done so.
+func TestMCPStateCreatesAMissingDirectory(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "app")
+	store := newMCPStateStore(dir)
+	file := emptyMCPStateFile()
+	file.Servers["supermetrics"] = mcpServerState{Enabled: true, Mode: "B"}
+	if err := store.save(file, false); err != nil {
+		t.Fatalf("a save into a missing directory must create it: %v", err)
+	}
+	info, err := os.Lstat(dir)
+	if err != nil || !info.IsDir() {
+		t.Fatalf("the settings directory was not created: %v", err)
+	}
+	if reloaded := newMCPStateStore(dir); !reloaded.value.Servers["supermetrics"].Enabled {
+		t.Fatal("the saved state did not round-trip")
+	}
+}

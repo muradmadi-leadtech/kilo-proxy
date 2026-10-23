@@ -53,7 +53,9 @@ func nativeMessage(message, language string) string {
 
 // Canonical backend translations shared with ui/i18n.mjs.
 var nativeBackendMessages = map[string]string{
-	"Servidor OAuth desconocido.": "Unknown OAuth server.",
+	"No se puede crear el directorio de ajustes":                                                                          "Cannot create the settings directory",
+	"Los ajustes de Kilo Proxy deben usar un directorio real":                                                             "Kilo Proxy settings must use a real directory",
+	"Servidor OAuth desconocido.":                                                                                         "Unknown OAuth server.",
 	"Este servidor no tiene variable de arranque; no se puede entregar un token OAuth.":                                   "This server has no launch variable, so an OAuth token cannot be delivered.",
 	"No se pueden eliminar las credenciales guardadas.":                                                                   "Cannot remove the stored credentials.",
 	"La aplicación se está cerrando.":                                                                                     "The application is closing.",

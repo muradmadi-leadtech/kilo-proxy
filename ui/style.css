@@ -180,3 +180,11 @@
 .mcp-card a{font-size:11px;color:#466532;text-decoration:underline;align-self:flex-start}
 .mcp-card button{margin-right:8px}
 @media(max-width:750px){.mcp-card-panel{padding:18px}.mcp-toolbar #mcp-search{max-width:none}.mcp-list{gap:12px}}
+
+.mcp-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.mcp-actions input[type=password]{flex:1 1 220px;max-width:360px}
+.mcp-actions button{margin-right:0}
+.mcp-card > select.mcp-mode{max-width:360px}
+.mcp-report{margin-top:14px;padding:12px 14px;background:#f5f7f1;border:1px solid var(--border);border-radius:8px}
+.mcp-report p{margin:0 0 6px;font-size:12px;color:var(--muted)}
+.mcp-report p:last-child{margin-bottom:0}

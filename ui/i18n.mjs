@@ -1,4 +1,9 @@
 export const translations = {
+  "SERVIDORES MCP": "MCP SERVERS",
+  "Servidores MCP": "MCP servers",
+  "Buscar servidores": "Search servers",
+  "No se puede crear el directorio de ajustes": "Cannot create the settings directory",
+  "Los ajustes de Kilo Proxy deben usar un directorio real": "Kilo Proxy settings must use a real directory",
   "Elige modelos de Meta o todos los modelos compartidos para Muse Code.": "Choose Meta models or all shared models for Muse Code.",
   "Selecciona al menos un modelo de Meta en Modelos, elige todos los modelos compartidos o desactiva Muse Code · Kilo.": "Select at least one Meta model in Models, choose all shared models, or disable Muse Code · Kilo.",
   "La política de modelos de Muse no es válida.": "Invalid Muse model policy.",
